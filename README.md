@@ -1,5 +1,7 @@
 # myScore
 
+[![CI](https://github.com/Matheuslinspg3/myScore/actions/workflows/ci.yml/badge.svg)](https://github.com/Matheuslinspg3/myScore/actions/workflows/ci.yml)
+
 Gestor financeiro pessoal, mobile-first, para responder cinco perguntas sem
 ruído:
 
