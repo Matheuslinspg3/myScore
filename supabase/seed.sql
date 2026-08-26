@@ -1,0 +1,3 @@
+-- Demo data lives in src/lib/demo-data.ts so the app can run with zero
+-- credentials. After creating your first Supabase user, default categories
+-- are inserted automatically by handle_new_user().
