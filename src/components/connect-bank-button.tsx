@@ -83,7 +83,8 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
 
       <p className="mt-2 max-w-md text-xs leading-relaxed text-slate-400">
         Primeiro conecte suas contas em meu.pluggy.ai e vincule-as à aplicação
-        demo no Dashboard da Pluggy. O myScore apenas importa a conexão existente.
+        demo no Dashboard da Pluggy. Depois da primeira sincronização, o item
+        fica vinculado à sua conta no myScore.
       </p>
 
       {items.length > 0 && (
