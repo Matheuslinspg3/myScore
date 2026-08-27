@@ -83,9 +83,11 @@ create table public.accounts (
   updated_at timestamptz not null default now()
 );
 
-create unique index accounts_owner_provider_id_uidx
-  on public.accounts(owner_id, provider_account_id)
-  where provider_account_id is not null;
+-- A regular unique constraint permits multiple NULL values in PostgreSQL and
+-- can be targeted by PostgREST's ON CONFLICT used by the Pluggy sync.
+alter table public.accounts
+  add constraint accounts_owner_provider_id_key
+  unique (owner_id, provider_account_id);
 
 create table public.credit_cards (
   id uuid primary key default gen_random_uuid(),
@@ -105,9 +107,9 @@ create table public.credit_cards (
   updated_at timestamptz not null default now()
 );
 
-create unique index credit_cards_owner_provider_id_uidx
-  on public.credit_cards(owner_id, provider_card_id)
-  where provider_card_id is not null;
+alter table public.credit_cards
+  add constraint credit_cards_owner_provider_id_key
+  unique (owner_id, provider_card_id);
 
 create table public.categories (
   id uuid primary key default gen_random_uuid(),
