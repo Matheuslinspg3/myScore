@@ -168,9 +168,9 @@ create table public.transactions (
   updated_at timestamptz not null default now()
 );
 
-create unique index transactions_external_id_uidx
-  on public.transactions(owner_id, source, external_id)
-  where external_id is not null;
+alter table public.transactions
+  add constraint transactions_external_id_key
+  unique (owner_id, source, external_id);
 
 create unique index transactions_dedupe_uidx
   on public.transactions(owner_id, account_id, dedupe_key);
@@ -259,9 +259,9 @@ create table public.receivables (
 create index receivables_owner_due_idx
   on public.receivables(owner_id, status, due_date);
 
-create unique index receivables_source_transaction_uidx
-  on public.receivables(owner_id, source_transaction_id)
-  where source_transaction_id is not null;
+alter table public.receivables
+  add constraint receivables_source_transaction_key
+  unique (owner_id, source_transaction_id);
 
 create table public.payables (
   id uuid primary key default gen_random_uuid(),
