@@ -71,10 +71,19 @@ Variáveis de produção:
 | AI_API_KEY | somente servidor |
 | AI_CHAT_MODEL | servidor |
 | AI_DATA_MODEL | servidor |
+| AI_SETTINGS_ENCRYPTION_KEY | servidor, opcional |
 
 Defina NEXT_PUBLIC_APP_URL como a URL final HTTPS.
 
 ### IA opcional
+
+O modo recomendado é configurar pela própria aba **Chat IA > Configuração da
+IA**. A configuração fica associada ao usuário autenticado no Supabase; a API
+Key é criptografada no servidor e nunca é devolvida ao navegador. Antes disso,
+aplique também a migration `202608270004_ai_credentials.sql`.
+
+As variáveis abaixo continuam disponíveis como fallback global ou para a
+primeira configuração:
 
 O myScore funciona normalmente com `AI_PROVIDER=disabled`. Para usar um
 gateway próprio compatível com a API da OpenAI, configure na Vercel:
@@ -95,8 +104,14 @@ esse caminho. Para a API nativa da Anthropic, use `AI_API_FORMAT=anthropic` e
 os aceitos pelo seu gateway.
 
 Nunca use o prefixo `NEXT_PUBLIC_` nas variáveis de IA. Depois de salvar as
-variáveis, crie um novo deployment e confira `integrations.ai: true` em
-`/api/health`.
+variáveis, crie um novo deployment. O campo `integrations.ai` em `/api/health`
+indica apenas se esse fallback da Vercel está completo; a configuração pessoal
+é validada dentro da aba Chat IA.
+
+`AI_SETTINGS_ENCRYPTION_KEY` é opcional. Se ausente, o myScore deriva uma chave
+da `SUPABASE_SERVICE_ROLE_KEY`, que já existe no servidor. Se qualquer uma
+dessas chaves-raiz for rotacionada, salve novamente a API Key da IA no
+dashboard.
 
 ## 4. Verificação
 
@@ -111,8 +126,8 @@ Depois do deploy:
 7. classifique uma transação e sincronize novamente;
 8. confirme que o enriquecimento permaneceu;
 9. teste a interface instalada no celular.
-10. se habilitou IA, teste Chat, catálogo e download CSV sem compartilhar a
-    chave no navegador.
+10. se habilitou IA, use **Testar conexão**, salve e valide Chat, catálogo e
+    download CSV; a chave deve ser digitada somente no formulário protegido.
 
 ## Modo demonstração
 

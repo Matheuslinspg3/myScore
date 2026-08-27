@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 
 export type AiApiFormat = "openai" | "anthropic";
 export type AiAuthScheme = "bearer" | "x-api-key";
@@ -71,6 +73,83 @@ export function resolveAiEndpoint(
   return base + "/v1/chat/completions";
 }
 
+function isPrivateIpv4(address: string): boolean {
+  const parts = address.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) {
+    return true;
+  }
+  const [a, b] = parts;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224
+  );
+}
+
+function isPrivateIp(address: string): boolean {
+  const normalized = address
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .split("%")[0];
+  if (isIP(normalized) === 4) return isPrivateIpv4(normalized);
+  if (isIP(normalized) !== 6) return true;
+  if (normalized.startsWith("::ffff:")) {
+    return isPrivateIpv4(normalized.slice("::ffff:".length));
+  }
+  return (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    normalized.startsWith("fe8") ||
+    normalized.startsWith("fe9") ||
+    normalized.startsWith("fea") ||
+    normalized.startsWith("feb")
+  );
+}
+
+export function validateAiBaseUrl(baseUrl: string): URL {
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    throw new AiGatewayError("AI_UNSAFE_BASE_URL");
+  }
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    (isIP(hostname) > 0 && isPrivateIp(hostname))
+  ) {
+    throw new AiGatewayError("AI_UNSAFE_BASE_URL");
+  }
+  return url;
+}
+
+async function assertSafeAiEndpoint(endpoint: string): Promise<void> {
+  const url = validateAiBaseUrl(endpoint);
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (isIP(hostname) > 0) return;
+  let addresses: Array<{ address: string }>;
+  try {
+    addresses = await lookup(hostname, { all: true });
+  } catch {
+    throw new AiGatewayError("AI_DNS_ERROR");
+  }
+  if (!addresses.length || addresses.some((item) => isPrivateIp(item.address))) {
+    throw new AiGatewayError("AI_UNSAFE_BASE_URL");
+  }
+}
+
 function authHeaders(config: AiConfig): Record<string, string> {
   if (config.authScheme === "x-api-key") {
     return { "x-api-key": config.apiKey };
@@ -123,6 +202,7 @@ export async function generateAiText({
   temperature?: number;
 }): Promise<string> {
   const endpoint = resolveAiEndpoint(config.baseUrl, config.apiFormat);
+  await assertSafeAiEndpoint(endpoint);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...authHeaders(config),

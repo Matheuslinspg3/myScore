@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/icon";
+import { AiSettingsPanel } from "@/components/ai-settings-panel";
 import { formatMoney } from "@/lib/format";
 import type { AiChatMessage, CatalogResult } from "@/types/ai";
 
@@ -43,6 +44,7 @@ export function AiWorkspace({
   enabled: boolean;
   hideValues: boolean;
 }) {
+  const [aiEnabled, setAiEnabled] = useState(enabled);
   const [messages, setMessages] = useState<DisplayMessage[]>(starterMessages);
   const [input, setInput] = useState("");
   const [chatPending, setChatPending] = useState(false);
@@ -141,6 +143,11 @@ export function AiWorkspace({
         </h1>
       </div>
 
+      <AiSettingsPanel
+        initialEnabled={enabled}
+        onStatusChange={setAiEnabled}
+      />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-5 shadow-sm">
           <div className="flex items-start gap-3">
@@ -158,7 +165,7 @@ export function AiWorkspace({
           <button
             type="button"
             onClick={generateCatalog}
-            disabled={!enabled || catalogPending}
+            disabled={!aiEnabled || catalogPending}
             className="mt-5 w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {catalogPending ? "Catalogando..." : "Catalogar com Opus 5"}
@@ -191,31 +198,6 @@ export function AiWorkspace({
           </a>
         </section>
       </div>
-
-      {!enabled && (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <h2 className="font-bold text-amber-950">IA aguardando configuração</h2>
-          <p className="mt-2 text-sm leading-relaxed text-amber-800">
-            Adicione as variáveis abaixo somente na Vercel e faça um novo
-            deploy. A Base URL e a API Key nunca chegam ao navegador.
-          </p>
-          <div className="mt-4 grid gap-2 text-xs font-semibold text-amber-950 sm:grid-cols-2">
-            {[
-              "AI_PROVIDER=custom",
-              "AI_API_FORMAT=openai",
-              "AI_AUTH_SCHEME=bearer",
-              "AI_BASE_URL",
-              "AI_API_KEY",
-              "AI_CHAT_MODEL=claude-sonnet-5",
-              "AI_DATA_MODEL=claude-opus-5",
-            ].map((item) => (
-              <code className="rounded-lg bg-white/70 px-3 py-2" key={item}>
-                {item}
-              </code>
-            ))}
-          </div>
-        </section>
-      )}
 
       {catalog && (
         <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
@@ -278,7 +260,7 @@ export function AiWorkspace({
         </section>
       )}
 
-      {enabled && (
+      {aiEnabled && (
         <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
             <div className="flex items-center gap-3">

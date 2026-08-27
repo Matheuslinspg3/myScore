@@ -37,6 +37,7 @@ O banco é reproduzível por migrations em supabase/migrations.
 | transaction_links | transferências, reembolsos e conciliações |
 | sync_logs | resultado sanitizado das sincronizações |
 | webhook_events | idempotência dos eventos externos |
+| ai_credentials | gateway e API Key cifrada por proprietário |
 
 ## Deduplicação
 
@@ -56,6 +57,15 @@ automaticamente.
 transaction_enrichments tem relação um-para-um com transactions. O sincronismo
 pode atualizar descrição, status e payload bancário, mas não atualiza a tabela
 de enriquecimentos. Essa separação evita perder trabalho manual.
+
+## Credenciais de IA
+
+`ai_credentials` guarda uma configuração por proprietário. O campo da API Key
+contém somente a cifra AES-256-GCM produzida pelo servidor. A tabela tem RLS
+ativo, não oferece políticas nem privilégios para `anon` ou `authenticated` e
+só é acessada por rotas autenticadas através de `service_role`.
+
+A migration responsável é `202608270004_ai_credentials.sql`.
 
 ## Aplicar migrations
 

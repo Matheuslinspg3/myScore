@@ -29,8 +29,9 @@ flowchart TD
   curta duração.
 - PLUGGY_CLIENT_SECRET, SUPABASE_SERVICE_ROLE_KEY e o segredo de webhook ficam
   exclusivamente no runtime Node server-side.
-- AI_API_KEY e AI_BASE_URL ficam no servidor; o navegador recebe somente a
-  resposta final do modelo.
+- AI_API_KEY e AI_BASE_URL ficam no servidor. Quando configurada pelo
+  dashboard, a chave é cifrada por usuário em uma tabela sem acesso público; o
+  navegador recebe somente o estado sem segredo e a resposta final do modelo.
 - Rotas de mutação exigem sessão, mesma origem e validação Zod.
 - O webhook usa um header aleatório, comparação segura e eventId único.
 
@@ -57,7 +58,8 @@ O adaptador de IA aceita gateways OpenAI-compatible ou Anthropic. Sonnet é
 usado no Chat e Opus na catalogação, com IDs configuráveis. Ambos operam em
 modo somente leitura. Agrupamentos são sugestões e os totais exibidos são
 recalculados com os centavos originais pelo código. A planilha CSV é
-determinística e não depende de modelo.
+determinística e não depende de modelo. A configuração pessoal do dashboard
+tem precedência sobre as variáveis da Vercel; estas funcionam como fallback.
 
 ### Integração bancária
 

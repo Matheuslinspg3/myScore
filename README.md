@@ -31,7 +31,8 @@ Vercel, Supabase e Pluggy.
 - webhook autenticado e idempotente;
 - APIs validadas para pessoas, recebíveis, contas a pagar e enriquecimentos;
 - cadastro de pessoas diretamente pelo dashboard;
-- Chat IA opcional, catálogo com totais determinísticos e exportação CSV;
+- Chat IA opcional, configuração segura no dashboard, catálogo com totais
+  determinísticos e exportação CSV;
 - PWA sem cache de respostas financeiras;
 - modo privacidade para ocultar valores;
 - dados fictícios para desenvolvimento sem credenciais;
@@ -85,6 +86,8 @@ x-myscore-webhook-secret: O_MESMO_VALOR_DE_PLUGGY_WEBHOOK_SECRET
 ~~~
 
 7. Cadastre no Supabase Auth as URLs de callback local e de produção.
+8. Na aba Chat IA, abra Configuração da IA, informe o gateway e teste antes de
+   salvar. A API Key é criptografada e não volta ao navegador.
 
 No Supabase, acesse Authentication > Providers > Email e deixe **Confirm
 email** ativado. O cadastro envia um link para o e-mail informado e o acesso

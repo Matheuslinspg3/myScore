@@ -16,6 +16,13 @@ PLUGGY_CLIENT_SECRET, SUPABASE_SERVICE_ROLE_KEY, AI_API_KEY e
 PLUGGY_WEBHOOK_SECRET nunca usam o prefixo NEXT_PUBLIC e só são lidos em
 módulos server-side.
 
+Quando a IA é configurada pelo dashboard, a chave é cifrada com AES-256-GCM
+antes de chegar ao Supabase. A tabela não concede acesso a `anon` nem a
+`authenticated`; somente uma rota de servidor, depois de validar a sessão,
+usa `service_role`. A chave nunca é retornada ao navegador. O segredo raiz pode
+ser `AI_SETTINGS_ENCRYPTION_KEY`; na ausência dele, é derivado da própria
+`SUPABASE_SERVICE_ROLE_KEY`.
+
 ### Autorização
 
 - autenticação por Supabase Auth;
@@ -34,6 +41,8 @@ módulos server-side.
 - ausência de credenciais e payloads sensíveis nos logs.
 - rotas de IA autenticadas, com mesma origem, rate limit e respostas sem cache;
 - dados enviados à IA somente após ação explícita no Chat ou no catálogo;
+- teste do gateway sem dados financeiros e bloqueio de Base URLs locais,
+  privadas, sem HTTPS ou com credenciais embutidas;
 - catálogo de IA somente leitura, com totais recalculados pelo código;
 - exportação CSV protegida contra fórmulas inseridas em campos textuais.
 
@@ -63,6 +72,8 @@ módulos server-side.
 6. revise logs antes de adicionar observabilidade externa;
 7. rotacione qualquer segredo que tenha sido exposto;
 8. aplique atualizações de dependências após CI e revisão.
+9. ao rotacionar a chave-raiz usada pela IA, informe novamente a API Key no
+   dashboard para gerar uma nova cifra.
 
 Exemplo para gerar o segredo:
 

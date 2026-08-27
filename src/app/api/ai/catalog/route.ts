@@ -5,8 +5,8 @@ import { buildCatalogCandidates } from "@/lib/ai/context";
 import {
   AiGatewayError,
   generateAiText,
-  getAiConfig,
 } from "@/lib/ai/gateway";
+import { getUserAiConfig } from "@/lib/ai/user-config";
 import { getDashboardData } from "@/lib/data/dashboard";
 import { isSameOrigin } from "@/lib/security/csrf";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const config = getAiConfig();
+    const config = await getUserAiConfig(user.id);
     const data = await getDashboardData();
     const candidates = buildCatalogCandidates(data.transactions);
     if (!candidates.length) {
