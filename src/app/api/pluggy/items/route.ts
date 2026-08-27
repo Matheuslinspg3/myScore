@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { getPluggyProvider } from "@/lib/banking/pluggy-provider";
+import {
+  getPluggyProvider,
+  PluggyApiError,
+} from "@/lib/banking/pluggy-provider";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSameOrigin } from "@/lib/security/csrf";
 
@@ -49,6 +52,31 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
+    if (error instanceof PluggyApiError) {
+      const message =
+        error.status === 401
+          ? "A Pluggy rejeitou as credenciais desta aplicação."
+          : error.status === 403
+            ? "A aplicação Pluggy não tem acesso a esses itens."
+            : error.status === 404
+              ? "Um ou mais itens não pertencem a esta aplicação Pluggy."
+              : "A Pluggy não conseguiu responder agora.";
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+    if (
+      error instanceof Error &&
+      error.message.startsWith("PLUGGY_ITEMS_UNAVAILABLE:")
+    ) {
+      const statuses = error.message.split(":")[1] ?? "";
+      return NextResponse.json(
+        {
+          error:
+            "A Pluggy não conseguiu acessar os itens configurados. Verifique se os itemIds são da mesma aplicação e se as credenciais estão corretas.",
+          providerStatuses: statuses,
+        },
+        { status: 502 },
+      );
     }
     return NextResponse.json(
       { error: "Não foi possível carregar as conexões Pluggy." },

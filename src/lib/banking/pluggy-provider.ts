@@ -19,6 +19,13 @@ interface ListResponse<T> {
   nextCursor?: string | null;
 }
 
+export class PluggyApiError extends Error {
+  constructor(readonly status: number) {
+    super("PLUGGY_API_" + status);
+    this.name = "PluggyApiError";
+  }
+}
+
 export class PluggyBankingProvider implements BankingProvider {
   private apiKeyCache: ApiKeyCache | null = null;
 
@@ -74,9 +81,7 @@ export class PluggyBankingProvider implements BankingProvider {
     });
 
     if (!response.ok) {
-      throw new Error(
-        "O provedor bancário respondeu com status " + response.status + ".",
-      );
+      throw new PluggyApiError(response.status);
     }
 
     if (response.status === 204) return undefined as T;
@@ -90,9 +95,28 @@ export class PluggyBankingProvider implements BankingProvider {
       .filter(Boolean);
 
     if (configuredItemIds.length > 0) {
-      return Promise.all(
+      const results = await Promise.allSettled(
         configuredItemIds.map((itemId) => this.getItem(itemId)),
       );
+      const items = results
+        .filter(
+          (result): result is PromiseFulfilledResult<BankingItem> =>
+            result.status === "fulfilled",
+        )
+        .map((result) => result.value);
+      if (items.length > 0) return items;
+
+      const statuses = results
+        .filter(
+          (result): result is PromiseRejectedResult =>
+            result.status === "rejected",
+        )
+        .map((result) =>
+          result.reason instanceof PluggyApiError
+            ? result.reason.status
+            : "unknown",
+        );
+      throw new Error("PLUGGY_ITEMS_UNAVAILABLE:" + statuses.join(","));
     }
 
     const response = await this.request<ListResponse<BankingItem>>("/items");
