@@ -23,7 +23,7 @@ O banco é reproduzível por migrations em supabase/migrations.
 | institutions | instituição por provider |
 | bank_connections | consentimento/item bancário |
 | accounts | contas, saldos bancários e preferências locais de exibição |
-| credit_cards | fatura original, correção local, inclusão no total e limites |
+| credit_cards | crédito utilizado original, correção local de fatura, inclusão no total e limites |
 | transactions | verdade importada do banco/arquivo |
 | transaction_enrichments | categoria, pessoa, natureza, notas e tags |
 | categories | categorias e subcategorias |
@@ -38,6 +38,7 @@ O banco é reproduzível por migrations em supabase/migrations.
 | sync_logs | resultado sanitizado das sincronizações |
 | webhook_events | idempotência dos eventos externos |
 | ai_credentials | gateway e API Key cifrada por proprietário |
+| banking_exclusions | bloqueios de itens/contas removidos pelo usuário |
 
 ## Deduplicação
 
@@ -75,17 +76,29 @@ uma conta duplicada do consolidado sem excluir a conta nem suas transações.
 Cartões, investimentos e tipos desconhecidos são excluídos do saldo por regra
 de aplicação. A migration é `202608270006_account_preferences.sql`.
 
-## Conferência de saldos e faturas
+## Conferência de saldos e cartões
 
 `accounts.balance_cents` e `credit_cards.invoice_cents` preservam os valores
-recebidos da Pluggy. Quando o provedor reporta um valor defasado, representa
-uma conta duplicada ou usa uma convenção diferente da instituição, o usuário
-pode preencher `balance_override_cents` ou `invoice_override_cents`. Os totais
-usam o ajuste, mas a interface continua mostrando o valor de origem para
-auditoria. `include_in_invoice` permite retirar cartões duplicados ou inativos
-da fatura consolidada. A sincronização não escreve nesses campos locais.
+recebidos da Pluggy. Para cartões, o saldo recebido equivale ao crédito
+utilizado e pode incluir parcelas futuras; ele não é tratado como fatura aberta
+sem confirmação. Quando o provedor reporta um valor defasado, representa uma
+conta duplicada ou usa uma convenção diferente da instituição, o usuário pode
+preencher `balance_override_cents` ou `invoice_override_cents`. Os totais usam
+o ajuste, mas a interface continua mostrando o valor de origem para auditoria.
+`include_in_invoice` permite retirar cartões duplicados ou inativos do total.
+A sincronização não escreve nesses campos locais.
 
 A migration responsável é `202608270007_balance_overrides.sql`.
+
+## Exclusão de contas e instituições
+
+As funções `delete_banking_account` e `delete_banking_connection` executam a
+exclusão dentro de uma transação, sob a sessão autenticada e as políticas RLS.
+Antes da cascata, elas registram em `banking_exclusions` somente o identificador
+externo necessário para evitar que um webhook recrie o recurso removido. Uma
+vinculação manual do mesmo Item ID restaura a conexão e remove seus bloqueios.
+
+A migration responsável é `202608270008_safe_banking_deletion.sql`.
 
 ## Aplicar migrations
 

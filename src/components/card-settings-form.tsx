@@ -101,7 +101,8 @@ export function CardSettingsForm({ card }: { card: CreditCard }) {
                   Configurar cartão
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  A fatura original da Pluggy continuará preservada.
+                  A Pluggy informa crédito utilizado, não necessariamente a
+                  fatura aberta. O valor original continuará preservado.
                 </p>
               </div>
               <button
@@ -130,7 +131,7 @@ export function CardSettingsForm({ card }: { card: CreditCard }) {
 
               <label className="block">
                 <span className="text-xs font-semibold text-slate-600">
-                  Fatura usada no myScore
+                  Fatura atual informada por você
                 </span>
                 <input
                   value={invoiceOverride}
@@ -140,7 +141,8 @@ export function CardSettingsForm({ card }: { card: CreditCard }) {
                   className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                 />
                 <span className="mt-1.5 block text-xs leading-relaxed text-slate-400">
-                  Deixe vazio para voltar ao valor enviado pela Pluggy.
+                  Deixe vazio para mostrar novamente o crédito utilizado
+                  enviado pela Pluggy.
                 </span>
               </label>
 
@@ -153,10 +155,11 @@ export function CardSettingsForm({ card }: { card: CreditCard }) {
                 />
                 <span>
                   <span className="block text-sm font-semibold text-slate-800">
-                    Somar na fatura atual
+                    Somar no total de cartões
                   </span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-slate-400">
-                    Desmarque se este cartão estiver duplicado ou inativo.
+                    Desmarque se este cartão estiver duplicado, inativo ou não
+                    fizer parte da sua análise.
                   </span>
                 </span>
               </label>

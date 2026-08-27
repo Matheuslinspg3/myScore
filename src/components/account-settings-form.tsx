@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/icon";
+import { DeleteBankingResourceButton } from "@/components/delete-banking-resource-button";
 import { isLiquidAccountType } from "@/lib/banking/account-type";
 import { centsToInput, inputToCents } from "@/lib/money-input";
 import type { Account } from "@/types/finance";
@@ -201,6 +202,23 @@ export function AccountSettingsForm({ account }: { account: Account }) {
                 </button>
               </div>
             </form>
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-rose-100 pt-5">
+              <div>
+                <p className="text-xs font-bold text-rose-700">Zona de risco</p>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Remove esta conta e o histórico bancário vinculado.
+                </p>
+              </div>
+              <DeleteBankingResourceButton
+                kind="account"
+                resourceId={account.id}
+                name={account.name}
+                detail="As transações, o cartão e as classificações ligadas a esta conta serão apagados. Parcelas, recebíveis e contas a pagar são preservados, mas perdem o vínculo bancário."
+                compact
+                onDeleted={() => setOpen(false)}
+              />
+            </div>
           </section>
         </div>
       )}

@@ -59,6 +59,10 @@ Fonte: https://docs.pluggy.ai/reference/transactions-list-1
 O myScore persiste cada Item porque a Pluggy não lista conexões existentes por
 motivos de segurança. avoidDuplicates reduz reconexões duplicadas.
 
+Ao remover uma instituição, o myScore apaga a cópia local e cria um tombstone
+por usuário. Webhooks posteriores são ignorados para esse Item. Informar o Item
+ID novamente é uma ação explícita de restauração e libera a sincronização.
+
 Fonte: https://docs.pluggy.ai/docs/item
 
 ## Webhooks

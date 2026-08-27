@@ -15,6 +15,13 @@ function moneyToCents(value: number | undefined): number {
   return Math.round((value ?? 0) * 100);
 }
 
+export class BankingResourceExcludedError extends Error {
+  constructor(readonly resourceType: "item" | "account") {
+    super("BANKING_RESOURCE_EXCLUDED");
+    this.name = "BankingResourceExcludedError";
+  }
+}
+
 async function persistTransactions(
   supabase: SupabaseClient,
   ownerId: string,
@@ -80,7 +87,23 @@ export async function syncPluggyItem(
   ownerId: string,
   itemId: string,
   supabase: SupabaseClient = createAdminClient(),
-): Promise<{ accounts: number; transactions: number; warnings: number }> {
+): Promise<{
+  accounts: number;
+  transactions: number;
+  warnings: number;
+  excludedAccounts: number;
+}> {
+  const { data: excludedItem, error: excludedItemError } = await supabase
+    .from("banking_exclusions")
+    .select("id")
+    .eq("owner_id", ownerId)
+    .eq("provider", "pluggy")
+    .eq("resource_type", "item")
+    .eq("external_id", itemId)
+    .maybeSingle();
+  if (excludedItemError) throw excludedItemError;
+  if (excludedItem) throw new BankingResourceExcludedError("item");
+
   const pluggy = getPluggyProvider();
   const startedAt = new Date().toISOString();
   const item = await pluggy.getItem(itemId);
@@ -138,11 +161,30 @@ export async function syncPluggyItem(
 
   try {
     const accounts = await pluggy.getAccounts(itemId);
+    const providerAccountIds = accounts.map((account) => account.id);
+    const excludedAccountIds = new Set<string>();
+    if (providerAccountIds.length > 0) {
+      const { data: exclusions, error: exclusionsError } = await supabase
+        .from("banking_exclusions")
+        .select("external_id")
+        .eq("owner_id", ownerId)
+        .eq("provider", "pluggy")
+        .eq("resource_type", "account")
+        .in("external_id", providerAccountIds);
+      if (exclusionsError) throw exclusionsError;
+      for (const exclusion of exclusions ?? []) {
+        excludedAccountIds.add(exclusion.external_id);
+      }
+    }
+
     let transactionCount = 0;
     let skippedTransactionAccounts = 0;
+    let processedAccounts = 0;
     const skippedProviderCodes = new Set<string>();
 
     for (const account of accounts) {
+      if (excludedAccountIds.has(account.id)) continue;
+      processedAccounts += 1;
       const normalizedAccountType = normalizeAccountType(account.type);
       const { data: localAccount, error: accountError } = await supabase
         .from("accounts")
@@ -235,7 +277,7 @@ export async function syncPluggyItem(
       status: skippedTransactionAccounts > 0 ? "partial" : "success",
       started_at: startedAt,
       finished_at: new Date().toISOString(),
-      accounts_processed: accounts.length,
+      accounts_processed: processedAccounts,
       transactions_processed: transactionCount,
       error_code:
         skippedTransactionAccounts > 0
@@ -243,14 +285,16 @@ export async function syncPluggyItem(
           : null,
       metadata: {
         transaction_accounts_skipped: skippedTransactionAccounts,
+        accounts_excluded_by_user: excludedAccountIds.size,
         provider_codes: [...skippedProviderCodes],
       },
     });
 
     return {
-      accounts: accounts.length,
+      accounts: processedAccounts,
       transactions: transactionCount,
       warnings: skippedTransactionAccounts,
+      excludedAccounts: excludedAccountIds.size,
     };
   } catch (error) {
     await supabase.from("sync_logs").insert({

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { syncPluggyItem } from "@/lib/banking/sync";
+import {
+  BankingResourceExcludedError,
+  syncPluggyItem,
+} from "@/lib/banking/sync";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { isSameOrigin } from "@/lib/security/csrf";
@@ -38,6 +41,15 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "FORBIDDEN_ITEM") {
       return NextResponse.json({ error: "Item não autorizado." }, { status: 403 });
+    }
+    if (error instanceof BankingResourceExcludedError) {
+      return NextResponse.json(
+        {
+          error:
+            "Esta instituição foi apagada do myScore. Vincule o Item ID novamente para restaurá-la.",
+        },
+        { status: 409 },
+      );
     }
     return NextResponse.json(
       { error: "Não foi possível sincronizar agora." },

@@ -16,6 +16,10 @@ const bodySchema = z.object({
     .nullable(),
 });
 
+const deleteBodySchema = z.object({
+  confirmation: z.string().trim().transform((value) => value.toUpperCase()).pipe(z.literal("APAGAR")),
+});
+
 function migrationMissing(code?: string): boolean {
   return ["42703", "PGRST204"].includes(code ?? "");
 }
@@ -103,6 +107,66 @@ export async function PATCH(
     }
     return NextResponse.json(
       { error: "Não foi possível atualizar a conta." },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ accountId: string }> },
+) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: "Origem inválida." }, { status: 403 });
+  }
+
+  try {
+    await requireUser();
+    deleteBodySchema.parse(await request.json());
+    const { accountId } = await context.params;
+    if (!z.string().uuid().safeParse(accountId).success) {
+      return NextResponse.json({ error: "Conta inválida." }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("delete_banking_account", {
+      p_account_id: accountId,
+    });
+    if (error) throw error;
+
+    return NextResponse.json({ deleted: true, impact: data });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Digite APAGAR para confirmar." },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
+    const databaseCode =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : undefined;
+    const databaseMessage =
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message ?? "")
+        : "";
+    if (databaseCode === "P0002" || databaseMessage.includes("ACCOUNT_NOT_FOUND")) {
+      return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
+    }
+    if (["42883", "PGRST202"].includes(databaseCode ?? "")) {
+      return NextResponse.json(
+        {
+          error: "A exclusão ainda precisa da migration do Supabase.",
+          setupRequired: true,
+        },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json(
+      { error: "Não foi possível apagar a conta." },
       { status: 500 },
     );
   }

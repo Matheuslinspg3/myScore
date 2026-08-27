@@ -6,7 +6,10 @@ import {
   getPluggyProvider,
   PluggyApiError,
 } from "@/lib/banking/pluggy-provider";
-import { syncPluggyItem } from "@/lib/banking/sync";
+import {
+  BankingResourceExcludedError,
+  syncPluggyItem,
+} from "@/lib/banking/sync";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { isSameOrigin } from "@/lib/security/csrf";
 
@@ -41,9 +44,33 @@ export async function POST(request: Request) {
       .eq("external_item_id", itemId)
       .maybeSingle();
 
-    if (existing && existing.owner_id !== user.id) {
+    if (
+      (existing && existing.owner_id !== user.id) ||
+      (!existing && item.clientUserId && item.clientUserId !== user.id)
+    ) {
       return NextResponse.json({ error: "Item não autorizado." }, { status: 403 });
     }
+
+    // Entering an Item ID is an explicit user action, so it also restores a
+    // connection (and its accounts) that this same user previously removed.
+    const [itemRestore, accountRestore] = await Promise.all([
+      supabase
+        .from("banking_exclusions")
+        .delete()
+        .eq("owner_id", user.id)
+        .eq("provider", "pluggy")
+        .eq("resource_type", "item")
+        .eq("external_id", itemId),
+      supabase
+        .from("banking_exclusions")
+        .delete()
+        .eq("owner_id", user.id)
+        .eq("provider", "pluggy")
+        .eq("resource_type", "account")
+        .eq("parent_external_id", itemId),
+    ]);
+    if (itemRestore.error) throw itemRestore.error;
+    if (accountRestore.error) throw accountRestore.error;
 
     const { error } = await supabase.from("bank_connections").upsert(
       {
@@ -70,6 +97,15 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "FORBIDDEN_ITEM") {
       return NextResponse.json({ error: "Item não autorizado." }, { status: 403 });
+    }
+    if (error instanceof BankingResourceExcludedError) {
+      return NextResponse.json(
+        {
+          error:
+            "A instituição foi removida durante a sincronização. Tente vinculá-la novamente.",
+        },
+        { status: 409 },
+      );
     }
     if (error instanceof PluggyApiError) {
       const message =

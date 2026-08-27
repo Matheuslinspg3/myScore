@@ -21,6 +21,7 @@ export type IconName =
   | "filter"
   | "more"
   | "edit"
+  | "trash"
   | "logout"
   | "sparkles"
   | "check";
@@ -111,6 +112,11 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" />
       <path d="m14 7 3 3" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
     </>
   ),
   logout: <path d="M10 5H5v14h5M13 8l4 4-4 4M8 12h9" />,

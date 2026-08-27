@@ -23,6 +23,7 @@ export type TransactionNature =
 
 export interface Account {
   id: string;
+  connectionId?: string;
   institution: string;
   name: string;
   providerName?: string;
@@ -41,6 +42,7 @@ export interface Account {
 
 export interface CreditCard {
   id: string;
+  accountId?: string;
   institution: string;
   name: string;
   providerName?: string;

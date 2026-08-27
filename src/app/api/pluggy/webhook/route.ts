@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncPluggyItem } from "@/lib/banking/sync";
+import {
+  BankingResourceExcludedError,
+  syncPluggyItem,
+} from "@/lib/banking/sync";
 import { verifyWebhookSecret } from "@/lib/security/webhook";
 
 export const runtime = "nodejs";
@@ -74,7 +77,20 @@ export async function POST(request: Request) {
         payload.event === "item/updated" ||
         payload.event.startsWith("transactions/"))
     ) {
-      await syncPluggyItem(ownerId, itemId);
+      try {
+        await syncPluggyItem(ownerId, itemId);
+      } catch (error) {
+        if (!(error instanceof BankingResourceExcludedError)) throw error;
+        await supabase
+          .from("webhook_events")
+          .update({
+            status: "ignored",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("provider", "pluggy")
+          .eq("provider_event_id", payload.eventId);
+        return NextResponse.json({ received: true, ignored: true });
+      }
     }
 
     await supabase

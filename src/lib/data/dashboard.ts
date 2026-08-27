@@ -43,6 +43,7 @@ interface RawAccount {
 
 interface RawCard {
   id: string;
+  account_id: string;
   name: string;
   custom_name?: string | null;
   last_four?: string | null;
@@ -54,6 +55,7 @@ interface RawCard {
   closing_date?: string | null;
   due_date?: string | null;
   accounts?: {
+    connection_id?: string | null;
     institutions?: RawInstitution | RawInstitution[] | null;
   } | null;
 }
@@ -190,31 +192,41 @@ export async function getDashboardData(): Promise<DashboardData> {
     supabase
       .from("accounts")
       .select("*, institutions(name, primary_color)")
+      .eq("owner_id", user.id)
       .eq("is_active", true)
       .order("balance_cents", { ascending: false }),
     supabase
       .from("credit_cards")
       .select("*, accounts(institutions(name, primary_color))")
+      .eq("owner_id", user.id)
       .order("invoice_cents", { ascending: false }),
     supabase
       .from("transactions")
       .select(
         "*, accounts(institutions(name, primary_color)), transaction_enrichments(nature, reimbursable, categories(name, color), people(id, name))",
       )
+      .eq("owner_id", user.id)
       .order("booked_at", { ascending: false })
       .limit(300),
-    supabase.from("people").select("*").eq("archived", false).order("name"),
+    supabase
+      .from("people")
+      .select("*")
+      .eq("owner_id", user.id)
+      .eq("archived", false)
+      .order("name"),
     supabase
       .from("receivables")
       .select("*, people(name)")
+      .eq("owner_id", user.id)
       .neq("status", "paid")
       .order("due_date"),
     supabase
       .from("payables")
       .select("*, categories(name)")
+      .eq("owner_id", user.id)
       .neq("status", "paid")
       .order("due_date"),
-    supabase.from("settings").select("*").maybeSingle(),
+    supabase.from("settings").select("*").eq("owner_id", user.id).maybeSingle(),
   ]);
 
   const queryError = [
@@ -237,13 +249,14 @@ export async function getDashboardData(): Promise<DashboardData> {
     []) as unknown as RawReceivable[];
   const rawPayables = (payablesResult.data ?? []) as unknown as RawPayable[];
 
-  const accounts: Account[] = rawAccounts.map((row) => {
+  const mappedAccounts: Account[] = rawAccounts.map((row) => {
     const institution = oneInstitution(row.institutions);
     const type = normalizeAccountType(row.raw_data?.type ?? row.account_type);
     const customName = row.custom_name?.trim() || undefined;
     const balanceOverride = row.balance_override_cents ?? undefined;
     return {
       id: row.id,
+      connectionId: row.connection_id,
       institution: institution.name ?? "Instituição",
       name: customName ?? row.name,
       providerName: row.name,
@@ -269,13 +282,43 @@ export async function getDashboardData(): Promise<DashboardData> {
     };
   });
 
+  const connectionLabels = new Map<
+    string,
+    { name: string; priority: number }
+  >();
+  for (const account of mappedAccounts) {
+    if (!account.connectionId) continue;
+    const priority = isLiquidAccountType(account.type)
+      ? 3
+      : account.type === "credit"
+        ? 1
+        : 2;
+    const current = connectionLabels.get(account.connectionId);
+    if (!current || priority > current.priority) {
+      connectionLabels.set(account.connectionId, {
+        name: account.providerName ?? account.name,
+        priority,
+      });
+    }
+  }
+  const accounts = mappedAccounts.map((account) => ({
+    ...account,
+    institution:
+      (account.connectionId
+        ? connectionLabels.get(account.connectionId)?.name
+        : undefined) ?? account.institution,
+  }));
+  const accountById = new Map(accounts.map((account) => [account.id, account]));
+
   const creditCards: CreditCard[] = rawCards.map((row) => {
+    const account = accountById.get(row.account_id);
     const institution = oneInstitution(row.accounts?.institutions);
     const customName = row.custom_name?.trim() || undefined;
     const invoiceOverride = row.invoice_override_cents ?? undefined;
     return {
       id: row.id,
-      institution: institution.name ?? "Instituição",
+      accountId: row.account_id,
+      institution: account?.institution ?? institution.name ?? "Instituição",
       name: customName ?? row.name,
       providerName: row.name,
       customName,

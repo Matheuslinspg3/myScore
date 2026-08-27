@@ -8,6 +8,8 @@ import { AiWorkspace } from "@/components/ai-workspace";
 import { PersonForm } from "@/components/person-form";
 import { AccountSettingsForm } from "@/components/account-settings-form";
 import { CardSettingsForm } from "@/components/card-settings-form";
+import { DeleteBankingResourceButton } from "@/components/delete-banking-resource-button";
+import { groupBankingConnections } from "@/lib/banking/connection-groups";
 import {
   accountContributesToBalance,
   calculateSafeBalance,
@@ -291,7 +293,7 @@ function Overview({
               " contas no total",
           },
           {
-            label: "Fatura atual",
+            label: "Crédito utilizado",
             value: consolidatedInvoice,
             icon: "card" as IconName,
             tone: "bg-rose-50 text-rose-600",
@@ -299,7 +301,7 @@ function Overview({
               String(includedCards) +
               " de " +
               String(data.creditCards.length) +
-              " cartões na soma",
+              " cartões informados pela Pluggy",
           },
           {
             label: "A receber",
@@ -867,6 +869,7 @@ function AccountsView({
   );
   const excludedCardCount = data.creditCards.length - includedCards.length;
   const consolidatedInvoice = sumCreditCardInvoices(data.creditCards);
+  const connections = groupBankingConnections(data.accounts, data.creditCards);
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -878,6 +881,51 @@ function AccountsView({
         </div>
         <ConnectBankButton enabled={!data.demoMode} />
       </div>
+      {connections.length > 0 && (
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
+          <SectionHeader
+            title="Instituições conectadas"
+            subtitle="Cada instituição corresponde a uma conexão do Meu Pluggy"
+          />
+          <div className="grid gap-3 md:grid-cols-2">
+            {connections.map((connection) => {
+              const accountNames = [
+                ...new Set(connection.accounts.map((account) => account.name)),
+              ];
+              return (
+                <div
+                  key={connection.id}
+                  className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4"
+                >
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-950 text-white">
+                    <Icon name="bank" className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-slate-900">
+                      {connection.name}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-400">
+                      {connection.accounts.length} conta(s)
+                      {connection.cardCount
+                        ? " · " + connection.cardCount + " cartão(ões)"
+                        : ""}
+                      {accountNames.length ? " · " + accountNames.join(", ") : ""}
+                    </p>
+                  </div>
+                  {!data.demoMode && (
+                    <DeleteBankingResourceButton
+                      kind="connection"
+                      resourceId={connection.id}
+                      name={connection.name}
+                      detail={`As ${connection.accounts.length} conta(s), ${connection.cardCount} cartão(ões), transações e classificações desta conexão serão apagadas do myScore.`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
       <section className="rounded-2xl border border-violet-100 bg-violet-50/70 p-5">
         <p className="text-xs font-semibold uppercase tracking-[.16em] text-violet-600">
           Saldo bancário consolidado
@@ -960,11 +1008,11 @@ function AccountsView({
       <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
         <SectionHeader
           title="Cartões"
-          subtitle="Confira cada origem e retire duplicidades da soma"
+          subtitle="Confira o crédito utilizado e informe a fatura quando necessário"
         />
         <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
           <p className="text-xs font-semibold uppercase tracking-[.16em] text-rose-600">
-            Fatura consolidada
+            Crédito utilizado consolidado
           </p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
             {display(consolidatedInvoice)}
@@ -974,7 +1022,9 @@ function AccountsView({
             {excludedCardCount
               ? " e " + excludedCardCount + " ficam fora"
               : ""}
-            . Ajustes locais não alteram o valor original da Pluggy.
+            . A Pluggy fornece o crédito utilizado, que pode incluir parcelas
+            futuras e não equivale necessariamente à fatura aberta. Ajustes
+            locais não alteram o valor original.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -1014,14 +1064,19 @@ function AccountsView({
                         : "bg-amber-400/10 text-amber-300")
                     }
                   >
-                    {included ? "Na fatura" : "Fora da fatura"}
+                    {included ? "No total" : "Fora do total"}
                   </span>
                 </div>
-                <p className="mt-8 text-xs text-slate-400">Fatura atual</p>
+                <p className="mt-8 text-xs text-slate-400">
+                  {card.invoiceOverride != null
+                    ? "Fatura ajustada"
+                    : "Crédito utilizado"}
+                </p>
                 <p className="mt-1 text-2xl font-bold">{display(card.invoice)}</p>
                 {card.invoiceOverride != null && (
                   <p className="mt-1 text-xs text-violet-300">
-                    Pluggy: {display(card.providerInvoice ?? card.invoice)}
+                    Pluggy (crédito usado):{" "}
+                    {display(card.providerInvoice ?? card.invoice)}
                   </p>
                 )}
                 <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10">

@@ -30,9 +30,11 @@ ser `AI_SETTINGS_ENCRYPTION_KEY`; na ausência dele, é derivado da própria
 - RLS com auth.uid() em leitura e escrita;
 - service role restrita à sincronização e ao webhook;
 - clientUserId Pluggy validado antes de persistir um Item.
-- nomes, saldos e faturas originais da Pluggy não são alterados por
+- nomes, saldos e valores de crédito originais da Pluggy não são alterados por
   preferências do usuário; alias, correções e inclusão nos consolidados ficam
   em campos locais separados.
+- exclusões bancárias exigem sessão, mesma origem, confirmação explícita e RPC
+  `security invoker`; tombstones pertencem ao mesmo `owner_id` e obedecem RLS.
 
 ### Rotas
 

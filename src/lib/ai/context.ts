@@ -16,7 +16,7 @@ export function buildFinancialSnapshot(
     generatedAt: new Date().toISOString(),
     currency: "BRL",
     scope:
-      "Retrato do myScore. Valores monetários estão em reais e podem refletir apenas o histórico sincronizado.",
+      "Retrato do myScore. Valores monetários estão em reais e podem refletir apenas o histórico sincronizado. Nos cartões, a Pluggy informa crédito utilizado; trate como fatura atual somente quando manuallyAdjusted for true.",
     totals: {
       bankBalance: reais(sumAccountBalances(data.accounts)),
       monthlyIncome: reais(data.monthlyIncome),
@@ -30,7 +30,7 @@ export function buildFinancialSnapshot(
       pendingPayables: reais(
         data.payables.reduce((sum, item) => sum + item.amount, 0),
       ),
-      currentCardInvoices: reais(sumCreditCardInvoices(data.creditCards)),
+      cardCreditUsedOrAdjusted: reais(sumCreditCardInvoices(data.creditCards)),
     },
     accounts: data.accounts.map((account) => ({
       institution: account.institution,
@@ -43,9 +43,10 @@ export function buildFinancialSnapshot(
     cards: data.creditCards.map((card) => ({
       institution: card.institution,
       name: card.name,
-      invoice: reais(card.invoice),
-      providerInvoice: reais(card.providerInvoice ?? card.invoice),
-      includedInInvoice: card.includeInInvoice !== false,
+      amountUsedByMyScore: reais(card.invoice),
+      pluggyCreditUsed: reais(card.providerInvoice ?? card.invoice),
+      manuallyAdjusted: card.invoiceOverride != null,
+      includedInCardTotal: card.includeInInvoice !== false,
       limit: reais(card.limit),
       availableLimit: reais(card.availableLimit),
       dueDay: card.dueDay,

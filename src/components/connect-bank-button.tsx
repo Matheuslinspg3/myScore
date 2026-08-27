@@ -44,6 +44,7 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
         accounts?: number;
         transactions?: number;
         warnings?: number;
+        excludedAccounts?: number;
       };
       if (!response.ok) {
         const pluggyDetail =
@@ -70,7 +71,7 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
       setMessage(
         body.warnings
           ? `Conta vinculada. ${body.transactions ?? 0} transações importadas; ${body.warnings} conta(s) sem histórico disponível na Pluggy.`
-          : `Conta vinculada: ${body.accounts ?? 0} conta(s) e ${body.transactions ?? 0} transações sincronizadas.`,
+          : `Conta vinculada: ${body.accounts ?? 0} conta(s) e ${body.transactions ?? 0} transações sincronizadas.${body.excludedAccounts ? ` ${body.excludedAccounts} conta(s) removida(s) continuaram ocultas.` : ""}`,
       );
       window.setTimeout(() => window.location.reload(), 1800);
     } catch (error) {
