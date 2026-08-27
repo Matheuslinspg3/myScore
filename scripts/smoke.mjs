@@ -44,8 +44,23 @@ try {
     healthResponse.json(),
   ]);
 
-  if (!homeResponse.ok || !html.includes("Saldo Seguro")) {
-    throw new Error("A home não respondeu com o dashboard esperado.");
+  const expectedHomeText = [
+    "Saldo Seguro",
+    "Chat IA",
+    "Baixar planilha CSV",
+  ];
+  const visibleHomeText = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const missingHomeText = expectedHomeText.filter(
+    (text) => !visibleHomeText.includes(text),
+  );
+  if (!homeResponse.ok || missingHomeText.length) {
+    throw new Error(
+      "A home não respondeu com o dashboard esperado. Ausente: " +
+        missingHomeText.join(", "),
+    );
   }
   if (!healthResponse.ok || health.status !== "ok" || health.mode !== "demo") {
     throw new Error("O health check não confirmou o modo demonstração.");

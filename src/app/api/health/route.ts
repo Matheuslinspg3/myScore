@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  hasAiCredentials,
   hasPluggyCredentials,
   isDemoMode,
   isSupabaseConfigured,
@@ -15,6 +16,7 @@ export async function GET() {
     integrations: {
       supabase: isSupabaseConfigured(),
       pluggy: hasPluggyCredentials(),
+      ai: hasAiCredentials(),
     },
   });
 }

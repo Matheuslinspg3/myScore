@@ -32,6 +32,10 @@ módulos server-side.
 - rate limit best-effort em operações Pluggy;
 - erros genéricos para o cliente;
 - ausência de credenciais e payloads sensíveis nos logs.
+- rotas de IA autenticadas, com mesma origem, rate limit e respostas sem cache;
+- dados enviados à IA somente após ação explícita no Chat ou no catálogo;
+- catálogo de IA somente leitura, com totais recalculados pelo código;
+- exportação CSV protegida contra fórmulas inseridas em campos textuais.
 
 ### Webhook
 
@@ -75,6 +79,9 @@ openssl rand -hex 32
   criptográfica padrão. O segredo aleatório de header é obrigatório neste
   projeto.
 - O modo demonstração é público e contém somente dados fictícios.
+- O conteúdo enviado a um gateway de IA passa a ser tratado segundo a política
+  desse fornecedor. Use apenas um gateway de confiança e mantenha a IA
+  desativada quando não precisar dela.
 
 ## Relato responsável
 

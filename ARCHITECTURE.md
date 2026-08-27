@@ -17,6 +17,7 @@ flowchart TD
   Browser["Navegador / PWA"] --> Next["Next.js na Vercel"]
   Next --> Auth["Supabase Auth"]
   Next --> DB["Supabase PostgreSQL + RLS"]
+  Next --> AI["Gateway de IA opcional"]
   Next --> Provider["BankingProvider"]
   Provider --> Pluggy["Pluggy / Conector 200"]
   Pluggy --> Banks["Instituições financeiras"]
@@ -28,6 +29,8 @@ flowchart TD
   curta duração.
 - PLUGGY_CLIENT_SECRET, SUPABASE_SERVICE_ROLE_KEY e o segredo de webhook ficam
   exclusivamente no runtime Node server-side.
+- AI_API_KEY e AI_BASE_URL ficam no servidor; o navegador recebe somente a
+  resposta final do modelo.
 - Rotas de mutação exigem sessão, mesma origem e validação Zod.
 - O webhook usa um header aleatório, comparação segura e eventId único.
 
@@ -47,6 +50,14 @@ segunda barreira mesmo que uma consulta esteja incorreta.
 
 Funções em src/lib/finance são determinísticas e não dependem de React,
 Supabase ou Pluggy. Valores são inteiros em centavos.
+
+### IA e planilhas
+
+O adaptador de IA aceita gateways OpenAI-compatible ou Anthropic. Sonnet é
+usado no Chat e Opus na catalogação, com IDs configuráveis. Ambos operam em
+modo somente leitura. Agrupamentos são sugestões e os totais exibidos são
+recalculados com os centavos originais pelo código. A planilha CSV é
+determinística e não depende de modelo.
 
 ### Integração bancária
 

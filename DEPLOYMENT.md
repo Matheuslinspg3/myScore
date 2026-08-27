@@ -64,9 +64,39 @@ Variáveis de produção:
 | PLUGGY_CLIENT_ID | somente servidor |
 | PLUGGY_CLIENT_SECRET | somente servidor |
 | PLUGGY_WEBHOOK_SECRET | somente servidor |
-| AI_PROVIDER=disabled | servidor |
+| AI_PROVIDER | servidor |
+| AI_API_FORMAT | servidor |
+| AI_AUTH_SCHEME | servidor |
+| AI_BASE_URL | somente servidor |
+| AI_API_KEY | somente servidor |
+| AI_CHAT_MODEL | servidor |
+| AI_DATA_MODEL | servidor |
 
 Defina NEXT_PUBLIC_APP_URL como a URL final HTTPS.
+
+### IA opcional
+
+O myScore funciona normalmente com `AI_PROVIDER=disabled`. Para usar um
+gateway próprio compatível com a API da OpenAI, configure na Vercel:
+
+~~~text
+AI_PROVIDER=custom
+AI_API_FORMAT=openai
+AI_AUTH_SCHEME=bearer
+AI_BASE_URL=https://SEU_GATEWAY
+AI_API_KEY=SUA_CHAVE
+AI_CHAT_MODEL=claude-sonnet-5
+AI_DATA_MODEL=claude-opus-5
+~~~
+
+Se a Base URL já terminar em `/v1` ou `/chat/completions`, o myScore preserva
+esse caminho. Para a API nativa da Anthropic, use `AI_API_FORMAT=anthropic` e
+`AI_AUTH_SCHEME=x-api-key`. Os identificadores dos modelos devem ser exatamente
+os aceitos pelo seu gateway.
+
+Nunca use o prefixo `NEXT_PUBLIC_` nas variáveis de IA. Depois de salvar as
+variáveis, crie um novo deployment e confira `integrations.ai: true` em
+`/api/health`.
 
 ## 4. Verificação
 
@@ -81,6 +111,8 @@ Depois do deploy:
 7. classifique uma transação e sincronize novamente;
 8. confirme que o enriquecimento permaneceu;
 9. teste a interface instalada no celular.
+10. se habilitou IA, teste Chat, catálogo e download CSV sem compartilhar a
+    chave no navegador.
 
 ## Modo demonstração
 

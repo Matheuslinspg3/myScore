@@ -42,3 +42,13 @@ export function hasPluggyCredentials(): boolean {
     process.env.PLUGGY_CLIENT_ID && process.env.PLUGGY_CLIENT_SECRET,
   );
 }
+
+export function hasAiCredentials(): boolean {
+  return Boolean(
+    process.env.AI_PROVIDER === "custom" &&
+      process.env.AI_BASE_URL &&
+      process.env.AI_API_KEY &&
+      (process.env.AI_CHAT_MODEL || process.env.AI_MODEL) &&
+      (process.env.AI_DATA_MODEL || process.env.AI_MODEL),
+  );
+}

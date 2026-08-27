@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { CashFlowChart } from "@/components/cash-flow-chart";
 import { ConnectBankButton } from "@/components/connect-bank-button";
 import { Icon, type IconName } from "@/components/icon";
+import { AiWorkspace } from "@/components/ai-workspace";
+import { PersonForm } from "@/components/person-form";
 import {
   calculateSafeBalance,
   pendingPayables,
@@ -18,7 +20,13 @@ import type {
   Transaction,
 } from "@/types/finance";
 
-type View = "overview" | "transactions" | "people" | "planning" | "accounts";
+type View =
+  | "overview"
+  | "transactions"
+  | "people"
+  | "planning"
+  | "ai"
+  | "accounts";
 
 const navigation: Array<{
   id: View;
@@ -40,6 +48,7 @@ const navigation: Array<{
     shortLabel: "Planejar",
     icon: "calendar",
   },
+  { id: "ai", label: "Chat IA", shortLabel: "IA", icon: "sparkles" },
   { id: "accounts", label: "Contas", shortLabel: "Contas", icon: "wallet" },
 ];
 
@@ -554,14 +563,20 @@ function PeopleView({
   const display = (value: number) => (hideValues ? "R$ ••••" : formatMoney(value));
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-sm text-slate-500">Gastos de terceiros e reembolsos</p>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-950">
-          Pessoas
-        </h1>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-sm text-slate-500">
+            Gastos de terceiros e reembolsos
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+            Pessoas
+          </h1>
+        </div>
+        <PersonForm disabled={data.demoMode} />
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {data.people.map((person) => {
+      {data.people.length ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {data.people.map((person) => {
           const progress = person.totalAssociated
             ? (person.received / person.totalAssociated) * 100
             : 0;
@@ -611,8 +626,22 @@ function PeopleView({
               </p>
             </section>
           );
-        })}
-      </div>
+          })}
+        </div>
+      ) : (
+        <section className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/60 px-5 py-12 text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-violet-600 shadow-sm">
+            <Icon name="people" className="h-6 w-6" />
+          </span>
+          <h2 className="mt-4 font-bold text-slate-900">
+            Nenhuma pessoa cadastrada
+          </h2>
+          <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+            Cadastre alguém para associar compras compartilhadas, empréstimos e
+            valores a receber.
+          </p>
+        </section>
+      )}
       <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
         <SectionHeader
           title="Contas a receber"
@@ -652,6 +681,13 @@ function PeopleView({
                   </td>
                 </tr>
               ))}
+              {!data.receivables.length && (
+                <tr>
+                  <td className="py-8 text-center text-sm text-slate-400" colSpan={5}>
+                    Nenhuma conta a receber cadastrada.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -996,13 +1032,19 @@ export function DashboardApp({ data }: { data: DashboardData }) {
           {view === "planning" && (
             <PlanningView data={data} hideValues={hideValues} />
           )}
+          <div className={view === "ai" ? "block" : "hidden"}>
+            <AiWorkspace
+              enabled={Boolean(data.aiEnabled) && !data.demoMode}
+              hideValues={hideValues}
+            />
+          </div>
           {view === "accounts" && (
             <AccountsView data={data} hideValues={hideValues} />
           )}
         </main>
       </div>
 
-      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_18px_50px_-15px_rgba(15,23,42,.28)] backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-6 rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_18px_50px_-15px_rgba(15,23,42,.28)] backdrop-blur-xl lg:hidden">
         {navigation.map((item) => (
           <button
             type="button"

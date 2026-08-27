@@ -30,6 +30,8 @@ Vercel, Supabase e Pluggy.
 - Row Level Security em todas as tabelas financeiras;
 - webhook autenticado e idempotente;
 - APIs validadas para pessoas, recebíveis, contas a pagar e enriquecimentos;
+- cadastro de pessoas diretamente pelo dashboard;
+- Chat IA opcional, catálogo com totais determinísticos e exportação CSV;
 - PWA sem cache de respostas financeiras;
 - modo privacidade para ocultar valores;
 - dados fictícios para desenvolvimento sem credenciais;
@@ -109,7 +111,9 @@ src/
 ├── components/          interface mobile-first
 ├── lib/
 │   ├── banking/         abstração e provider Pluggy
+│   ├── ai/              gateway, contexto e catálogo somente leitura
 │   ├── data/            consultas do dashboard
+│   ├── export/          planilhas geradas sem depender da IA
 │   ├── finance/         cálculos determinísticos
 │   ├── security/        CSRF, rate limit e webhook
 │   └── supabase/        clientes browser/server/admin

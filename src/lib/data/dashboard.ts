@@ -1,5 +1,5 @@
 import { demoData } from "@/lib/demo-data";
-import { isDemoMode } from "@/lib/env";
+import { hasAiCredentials, isDemoMode } from "@/lib/env";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -396,5 +396,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     monthlyIncome: incomeThisMonth,
     monthlyExpense: expenseThisMonth,
     demoMode: false,
+    aiEnabled: hasAiCredentials(),
   };
 }

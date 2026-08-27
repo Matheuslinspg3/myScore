@@ -123,4 +123,5 @@ export interface DashboardData {
   monthlyIncome: Money;
   monthlyExpense: Money;
   demoMode: boolean;
+  aiEnabled?: boolean;
 }
