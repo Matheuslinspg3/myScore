@@ -37,11 +37,14 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
       const body = (await response.json()) as {
         error?: string;
         databaseCode?: string;
+        providerStatus?: number;
       };
       if (!response.ok) {
         const diagnostic = body.databaseCode
           ? ` Código técnico: ${body.databaseCode}.`
-          : "";
+          : body.providerStatus
+            ? ` Código Pluggy: ${body.providerStatus}.`
+            : "";
         throw new Error((body.error ?? "Falha ao sincronizar.") + diagnostic);
       }
 
