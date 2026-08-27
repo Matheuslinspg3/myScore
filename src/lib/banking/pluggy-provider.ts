@@ -89,36 +89,6 @@ export class PluggyBankingProvider implements BankingProvider {
   }
 
   async getItems(): Promise<BankingItem[]> {
-    const configuredItemIds = (process.env.PLUGGY_ITEM_IDS ?? "")
-      .split(",")
-      .map((itemId) => itemId.trim())
-      .filter(Boolean);
-
-    if (configuredItemIds.length > 0) {
-      const results = await Promise.allSettled(
-        configuredItemIds.map((itemId) => this.getItem(itemId)),
-      );
-      const items = results
-        .filter(
-          (result): result is PromiseFulfilledResult<BankingItem> =>
-            result.status === "fulfilled",
-        )
-        .map((result) => result.value);
-      if (items.length > 0) return items;
-
-      const statuses = results
-        .filter(
-          (result): result is PromiseRejectedResult =>
-            result.status === "rejected",
-        )
-        .map((result) =>
-          result.reason instanceof PluggyApiError
-            ? result.reason.status
-            : "unknown",
-        );
-      throw new Error("PLUGGY_ITEMS_UNAVAILABLE:" + statuses.join(","));
-    }
-
     const response = await this.request<ListResponse<BankingItem>>("/items");
     return response.results ?? [];
   }

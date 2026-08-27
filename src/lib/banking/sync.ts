@@ -1,6 +1,7 @@
 import { transactionFingerprint } from "@/lib/finance/deduplication";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPluggyProvider } from "@/lib/banking/pluggy-provider";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   BankingAccount,
   BankingTransaction,
@@ -18,13 +19,13 @@ function accountType(type: string): string {
 }
 
 async function persistTransactions(
+  supabase: SupabaseClient,
   ownerId: string,
   localAccountId: string,
   account: BankingAccount,
   transactions: BankingTransaction[],
 ) {
   if (transactions.length === 0) return 0;
-  const supabase = createAdminClient();
   const rows = transactions.map((transaction) => {
     const amountCents = moneyToCents(transaction.amount);
     return {
@@ -81,8 +82,8 @@ async function persistTransactions(
 export async function syncPluggyItem(
   ownerId: string,
   itemId: string,
+  supabase: SupabaseClient = createAdminClient(),
 ): Promise<{ accounts: number; transactions: number }> {
-  const supabase = createAdminClient();
   const pluggy = getPluggyProvider();
   const startedAt = new Date().toISOString();
   const item = await pluggy.getItem(itemId);
@@ -203,6 +204,7 @@ export async function syncPluggyItem(
         from.toISOString().slice(0, 10),
       );
       transactionCount += await persistTransactions(
+        supabase,
         ownerId,
         localAccount.id,
         account,

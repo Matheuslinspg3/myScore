@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { syncPluggyItem } from "@/lib/banking/sync";
+import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { isSameOrigin } from "@/lib/security/csrf";
 
@@ -25,7 +26,8 @@ export async function POST(request: Request) {
       );
     }
     const body = bodySchema.parse(await request.json());
-    const result = await syncPluggyItem(user.id, body.itemId);
+    const supabase = await createClient();
+    const result = await syncPluggyItem(user.id, body.itemId, supabase);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {

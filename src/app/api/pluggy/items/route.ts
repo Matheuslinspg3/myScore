@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import {
-  getPluggyProvider,
-  PluggyApiError,
-} from "@/lib/banking/pluggy-provider";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { isSameOrigin } from "@/lib/security/csrf";
 
 export const runtime = "nodejs";
@@ -15,68 +11,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Origem inválida." }, { status: 403 });
     }
     const user = await requireUser();
-    const supabase = createAdminClient();
-    const { data: connections } = await supabase
+    const supabase = await createClient();
+    const { data: connections, error } = await supabase
       .from("bank_connections")
-      .select("external_item_id")
+      .select("external_item_id, status, institutions(name, logo_url, primary_color)")
       .eq("owner_id", user.id)
       .eq("provider", "pluggy");
-    const savedItemIds = [
-      ...new Set(
-        (connections ?? [])
-          .map((connection) => connection.external_item_id)
-          .filter(Boolean),
-      ),
-    ];
-    const provider = getPluggyProvider();
-    const items = savedItemIds.length
-      ? (
-          await Promise.all(
-            savedItemIds.map(async (itemId) => {
-              try {
-                return await provider.getItem(itemId);
-              } catch {
-                return null;
-              }
-            }),
-          )
-        ).filter((item): item is NonNullable<typeof item> => item !== null)
-      : await provider.getItems();
+    if (error) throw error;
     return NextResponse.json({
-      items: items.map((item) => ({
-        id: item.id,
-        status: item.status,
-        connector: item.connector,
-      })),
+      items: (connections ?? []).map((connection) => {
+        const institution = connection.institutions?.[0];
+        return {
+          id: connection.external_item_id,
+          status: connection.status,
+          connector: {
+            name: institution?.name ?? "Instituição vinculada",
+            imageUrl: institution?.logo_url ?? undefined,
+            primaryColor: institution?.primary_color ?? undefined,
+          },
+        };
+      }),
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-    }
-    if (error instanceof PluggyApiError) {
-      const message =
-        error.status === 401
-          ? "A Pluggy rejeitou as credenciais desta aplicação."
-          : error.status === 403
-            ? "A aplicação Pluggy não tem acesso a esses itens."
-            : error.status === 404
-              ? "Um ou mais itens não pertencem a esta aplicação Pluggy."
-              : "A Pluggy não conseguiu responder agora.";
-      return NextResponse.json({ error: message }, { status: 502 });
-    }
-    if (
-      error instanceof Error &&
-      error.message.startsWith("PLUGGY_ITEMS_UNAVAILABLE:")
-    ) {
-      const statuses = error.message.split(":")[1] ?? "";
-      return NextResponse.json(
-        {
-          error:
-            "A Pluggy não conseguiu acessar os itens configurados. Verifique se os itemIds são da mesma aplicação e se as credenciais estão corretas.",
-          providerStatuses: statuses,
-        },
-        { status: 502 },
-      );
     }
     return NextResponse.json(
       { error: "Não foi possível carregar as conexões Pluggy." },

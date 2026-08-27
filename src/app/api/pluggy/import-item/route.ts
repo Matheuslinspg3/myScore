@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import {
   getPluggyProvider,
   PluggyApiError,
@@ -29,7 +29,9 @@ export async function POST(request: Request) {
     }
 
     const { itemId } = bodySchema.parse(await request.json());
-    const supabase = createAdminClient();
+    // This request uses the logged-in user's Supabase session. RLS therefore
+    // enforces ownership for every connection, account and transaction written.
+    const supabase = await createClient();
     const pluggy = getPluggyProvider();
     const item = await pluggy.getItem(itemId);
     const { data: existing } = await supabase
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
     );
     if (error) throw error;
 
-    return NextResponse.json(await syncPluggyItem(user.id, itemId));
+    return NextResponse.json(await syncPluggyItem(user.id, itemId, supabase));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Item inválido." }, { status: 400 });

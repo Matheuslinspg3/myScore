@@ -1,65 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { Icon } from "@/components/icon";
 
-interface PluggyItem {
-  id: string;
-  status: string;
-  connector: {
-    name: string;
-    imageUrl?: string;
-    primaryColor?: string;
-  };
-}
+const itemIdPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function ConnectBankButton({ enabled }: { enabled: boolean }) {
-  const [items, setItems] = useState<PluggyItem[]>([]);
-  const [state, setState] = useState<"idle" | "loading" | "syncing" | "error">(
-    "idle",
-  );
+  const [itemId, setItemId] = useState("");
+  const [state, setState] = useState<"idle" | "syncing" | "error">("idle");
   const [message, setMessage] = useState("");
 
-  async function loadItems() {
+  async function importItem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedItemId = itemId.trim();
+
     if (!enabled) {
+      setState("error");
       setMessage("Configure Supabase e Pluggy para usar suas conexões reais.");
       return;
     }
-    setState("loading");
-    setMessage("");
-    try {
-      const response = await fetch("/api/pluggy/items", { cache: "no-store" });
-      const body = (await response.json()) as {
-        items?: PluggyItem[];
-        error?: string;
-      };
-      if (!response.ok) throw new Error(body.error ?? "Falha ao carregar.");
-      setItems(body.items ?? []);
-      if (!body.items?.length) {
-        setMessage(
-          "Nenhuma conexão encontrada. Conecte sua conta primeiro no Dashboard do Pluggy usando o Meu Pluggy.",
-        );
-      }
-      setState("idle");
-    } catch (error) {
+    if (!itemIdPattern.test(normalizedItemId)) {
       setState("error");
-      setMessage(error instanceof Error ? error.message : "Falha ao carregar.");
+      setMessage("Informe um Item ID válido da sua conexão no Meu Pluggy.");
+      return;
     }
-  }
 
-  async function importItem(itemId: string) {
     setState("syncing");
     setMessage("");
     try {
       const response = await fetch("/api/pluggy/import-item", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId }),
+        body: JSON.stringify({ itemId: normalizedItemId }),
       });
       const body = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(body.error ?? "Falha ao sincronizar.");
-      setMessage("Conta importada e sincronizada.");
+
       setState("idle");
+      setMessage("Conta vinculada e sincronizada com sucesso.");
       window.setTimeout(() => window.location.reload(), 800);
     } catch (error) {
       setState("error");
@@ -67,59 +46,43 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
     }
   }
 
-  const busy = state === "loading" || state === "syncing";
+  const busy = state === "syncing";
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={loadItems}
-        disabled={busy}
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60"
+    <form onSubmit={importItem} className="w-full max-w-md">
+      <label
+        htmlFor="pluggy-item-id"
+        className="block text-xs font-semibold text-slate-600"
       >
-        <Icon name={busy ? "sync" : "plus"} className={busy ? "animate-spin" : ""} />
-        {state === "loading" ? "Buscando..." : "Buscar conexões do Meu Pluggy"}
-      </button>
+        ID da conexão do Meu Pluggy
+      </label>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <input
+          id="pluggy-item-id"
+          value={itemId}
+          onChange={(event) => setItemId(event.target.value)}
+          placeholder="Cole o Item ID aqui"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          disabled={busy}
+          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 disabled:opacity-60"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60"
+        >
+          <Icon name={busy ? "sync" : "plus"} className={busy ? "animate-spin" : ""} />
+          {busy ? "Sincronizando..." : "Vincular conta"}
+        </button>
+      </div>
 
-      <p className="mt-2 max-w-md text-xs leading-relaxed text-slate-400">
-        Primeiro conecte suas contas em meu.pluggy.ai e vincule-as à aplicação
-        demo no Dashboard da Pluggy. Depois da primeira sincronização, o item
-        fica vinculado à sua conta no myScore.
+      <p className="mt-2 text-xs leading-relaxed text-slate-400">
+        No Dashboard da Pluggy, copie o <strong>Item ID</strong> da conta que
+        você já conectou pelo Meu Pluggy. Cole-o aqui uma única vez. O myScore
+        valida o ID pela API e o vincula somente à sua conta.
       </p>
-
-      {items.length > 0 && (
-        <div className="mt-4 space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <span
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sm font-black text-white"
-                  style={{ backgroundColor: item.connector.primaryColor ?? "#475569" }}
-                >
-                  {item.connector.name.slice(0, 1).toUpperCase()}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-800">
-                    {item.connector.name}
-                  </p>
-                  <p className="text-xs text-slate-400">{item.status}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => importItem(item.id)}
-                disabled={busy}
-                className="shrink-0 rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-60"
-              >
-                Sincronizar
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {message && (
         <p
@@ -132,6 +95,6 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
           {message}
         </p>
       )}
-    </div>
+    </form>
   );
 }
