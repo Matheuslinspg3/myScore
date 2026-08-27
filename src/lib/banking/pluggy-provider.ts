@@ -84,6 +84,17 @@ export class PluggyBankingProvider implements BankingProvider {
   }
 
   async getItems(): Promise<BankingItem[]> {
+    const configuredItemIds = (process.env.PLUGGY_ITEM_IDS ?? "")
+      .split(",")
+      .map((itemId) => itemId.trim())
+      .filter(Boolean);
+
+    if (configuredItemIds.length > 0) {
+      return Promise.all(
+        configuredItemIds.map((itemId) => this.getItem(itemId)),
+      );
+    }
+
     const response = await this.request<ListResponse<BankingItem>>("/items");
     return response.results ?? [];
   }

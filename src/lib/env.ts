@@ -8,6 +8,7 @@ const serverEnvSchema = z.object({
   PLUGGY_CLIENT_ID: z.string().min(1),
   PLUGGY_CLIENT_SECRET: z.string().min(1),
   PLUGGY_WEBHOOK_SECRET: z.string().min(24),
+  PLUGGY_ITEM_IDS: z.string().optional(),
 });
 
 export function isSupabaseConfigured(): boolean {
