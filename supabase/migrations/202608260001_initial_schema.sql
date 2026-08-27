@@ -172,7 +172,9 @@ alter table public.transactions
   add constraint transactions_external_id_key
   unique (owner_id, source, external_id);
 
-create unique index transactions_dedupe_uidx
+-- Fingerprints are candidates for reconciliation, not hard identifiers: two
+-- legitimate purchases can share date, value and description.
+create index transactions_dedupe_idx
   on public.transactions(owner_id, account_id, dedupe_key);
 
 create index transactions_owner_date_idx

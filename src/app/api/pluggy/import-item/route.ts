@@ -96,14 +96,21 @@ export async function POST(request: Request) {
       "code" in error &&
       typeof error.code === "string"
     ) {
+      const databaseMessage =
+        "message" in error && typeof error.message === "string"
+          ? error.message
+          : "";
+      const databaseConstraint =
+        /constraint "([a-zA-Z0-9_]+)"/.exec(databaseMessage)?.[1];
       console.error("Falha do Supabase ao importar item", {
         code: error.code,
-        message: "message" in error ? error.message : undefined,
+        constraint: databaseConstraint,
       });
       return NextResponse.json(
         {
           error: "O Supabase recusou o registro ou a sincronização do item.",
           databaseCode: error.code,
+          databaseConstraint,
         },
         { status: 502 },
       );
