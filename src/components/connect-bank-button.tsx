@@ -40,6 +40,9 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
         providerStatus?: number;
         providerOperation?: string;
         providerCode?: string;
+        accounts?: number;
+        transactions?: number;
+        warnings?: number;
       };
       if (!response.ok) {
         const pluggyDetail =
@@ -59,8 +62,12 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
       }
 
       setState("idle");
-      setMessage("Conta vinculada e sincronizada com sucesso.");
-      window.setTimeout(() => window.location.reload(), 800);
+      setMessage(
+        body.warnings
+          ? `Conta vinculada. ${body.transactions ?? 0} transações importadas; ${body.warnings} conta(s) sem histórico disponível na Pluggy.`
+          : `Conta vinculada: ${body.accounts ?? 0} conta(s) e ${body.transactions ?? 0} transações sincronizadas.`,
+      );
+      window.setTimeout(() => window.location.reload(), 1800);
     } catch (error) {
       setState("error");
       setMessage(error instanceof Error ? error.message : "Falha ao sincronizar.");

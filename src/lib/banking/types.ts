@@ -67,8 +67,5 @@ export interface BankingProvider {
   refreshConnection(itemId: string): Promise<void>;
   getItem(itemId: string): Promise<BankingItem>;
   getAccounts(itemId: string): Promise<BankingAccount[]>;
-  getTransactions(
-    accountId: string,
-    from?: string,
-  ): Promise<BankingTransaction[]>;
+  getTransactions(accountId: string): Promise<BankingTransaction[]>;
 }

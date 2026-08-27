@@ -18,12 +18,17 @@ describe("PluggyBankingProvider", () => {
     vi.stubGlobal("fetch", fetcher);
 
     const provider = new PluggyBankingProvider("client", "secret");
-    const transactions = await provider.getTransactions(accountId, "2025-01-01");
+    const transactions = await provider.getTransactions(accountId);
 
     expect(transactions.map((transaction) => transaction.id)).toEqual([
       "first",
       "second",
     ]);
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "https://api.pluggy.ai/v2/transactions?accountId=" + accountId,
+      expect.any(Object),
+    );
     expect(fetcher).toHaveBeenNthCalledWith(
       3,
       "https://api.pluggy.ai/v2/transactions" + next,

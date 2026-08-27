@@ -1,6 +1,9 @@
 import { transactionFingerprint } from "@/lib/finance/deduplication";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPluggyProvider } from "@/lib/banking/pluggy-provider";
+import {
+  getPluggyProvider,
+  PluggyApiError,
+} from "@/lib/banking/pluggy-provider";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   BankingAccount,
@@ -83,7 +86,7 @@ export async function syncPluggyItem(
   ownerId: string,
   itemId: string,
   supabase: SupabaseClient = createAdminClient(),
-): Promise<{ accounts: number; transactions: number }> {
+): Promise<{ accounts: number; transactions: number; warnings: number }> {
   const pluggy = getPluggyProvider();
   const startedAt = new Date().toISOString();
   const item = await pluggy.getItem(itemId);
@@ -142,6 +145,8 @@ export async function syncPluggyItem(
   try {
     const accounts = await pluggy.getAccounts(itemId);
     let transactionCount = 0;
+    let skippedTransactionAccounts = 0;
+    const skippedProviderCodes = new Set<string>();
 
     for (const account of accounts) {
       const { data: localAccount, error: accountError } = await supabase
@@ -197,12 +202,23 @@ export async function syncPluggyItem(
         if (cardError) throw cardError;
       }
 
-      const from = new Date();
-      from.setMonth(from.getMonth() - 12);
-      const transactions = await pluggy.getTransactions(
-        account.id,
-        from.toISOString().slice(0, 10),
-      );
+      let transactions: BankingTransaction[];
+      try {
+        transactions = await pluggy.getTransactions(account.id);
+      } catch (error) {
+        if (
+          error instanceof PluggyApiError &&
+          error.operation === "transactions" &&
+          [400, 404, 422].includes(error.status)
+        ) {
+          skippedTransactionAccounts += 1;
+          skippedProviderCodes.add(
+            error.providerCode ?? "HTTP_" + error.status,
+          );
+          continue;
+        }
+        throw error;
+      }
       transactionCount += await persistTransactions(
         supabase,
         ownerId,
@@ -216,14 +232,26 @@ export async function syncPluggyItem(
       owner_id: ownerId,
       connection_id: connection.id,
       provider: "pluggy",
-      status: "success",
+      status: skippedTransactionAccounts > 0 ? "partial" : "success",
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       accounts_processed: accounts.length,
       transactions_processed: transactionCount,
+      error_code:
+        skippedTransactionAccounts > 0
+          ? "TRANSACTIONS_PARTIALLY_UNAVAILABLE"
+          : null,
+      metadata: {
+        transaction_accounts_skipped: skippedTransactionAccounts,
+        provider_codes: [...skippedProviderCodes],
+      },
     });
 
-    return { accounts: accounts.length, transactions: transactionCount };
+    return {
+      accounts: accounts.length,
+      transactions: transactionCount,
+      warnings: skippedTransactionAccounts,
+    };
   } catch (error) {
     await supabase.from("sync_logs").insert({
       owner_id: ownerId,

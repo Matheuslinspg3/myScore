@@ -7,6 +7,7 @@ import type {
 } from "@/lib/banking/types";
 
 const PLUGGY_API = "https://api.pluggy.ai";
+const MAX_TRANSACTION_PAGES = 100;
 
 interface ApiKeyCache {
   value: string;
@@ -86,8 +87,18 @@ export class PluggyBankingProvider implements BankingProvider {
     if (!response.ok) {
       let providerCode: string | undefined;
       try {
-        const body = (await response.json()) as { code?: unknown };
-        if (typeof body.code === "string") providerCode = body.code;
+        const body = (await response.json()) as {
+          code?: unknown;
+          codeDescription?: unknown;
+        };
+        if (typeof body.codeDescription === "string") {
+          providerCode = body.codeDescription;
+        } else if (
+          typeof body.code === "string" ||
+          typeof body.code === "number"
+        ) {
+          providerCode = String(body.code);
+        }
       } catch {
         // Some provider errors are returned without a JSON body.
       }
@@ -152,20 +163,18 @@ export class PluggyBankingProvider implements BankingProvider {
     return response.results ?? [];
   }
 
-  async getTransactions(
-    accountId: string,
-    from?: string,
-  ): Promise<BankingTransaction[]> {
+  async getTransactions(accountId: string): Promise<BankingTransaction[]> {
     const transactions: BankingTransaction[] = [];
     const query = new URLSearchParams({ accountId });
-    if (from) query.set("from", from);
     let path: string | null = "/v2/transactions?" + query.toString();
+    let pageCount = 0;
 
     while (path) {
       const page: ListResponse<BankingTransaction> = await this.request(
         path,
       );
       transactions.push(...(page.results ?? []));
+      pageCount += 1;
       // Pluggy v2 returns the following page as an opaque query string, such
       // as ?accountId=...&after=.... It must be reused unchanged.
       path = page.next?.startsWith("?")
@@ -173,6 +182,9 @@ export class PluggyBankingProvider implements BankingProvider {
         : page.next?.startsWith("/v2/transactions?")
           ? page.next
           : null;
+      if (path && pageCount >= MAX_TRANSACTION_PAGES) {
+        throw new Error("PLUGGY_TRANSACTION_PAGE_LIMIT");
+      }
     }
 
     return transactions;
