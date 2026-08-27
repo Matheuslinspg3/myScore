@@ -3,7 +3,42 @@ import {
   calculateSafeBalance,
   projectBalance,
   splitInstallments,
+  sumAccountBalances,
 } from "@/lib/finance/calculations";
+import type { Account } from "@/types/finance";
+
+function account(
+  type: Account["type"],
+  balance: number,
+  includeInBalance?: boolean,
+): Account {
+  return {
+    id: type + String(balance),
+    institution: "Banco",
+    name: "Conta",
+    type,
+    balance,
+    includeInBalance,
+    color: "#000000",
+    lastSync: "agora",
+    status: "healthy",
+  };
+}
+
+describe("sumAccountBalances", () => {
+  it("soma somente dinheiro líquido incluído pelo usuário", () => {
+    expect(
+      sumAccountBalances([
+        account("checking", 300_000),
+        account("payment", 120_000),
+        account("checking", 90_000, false),
+        account("credit", 117_090, true),
+        account("investment", 800_000, true),
+        account("other", 500_000, true),
+      ]),
+    ).toBe(420_000);
+  });
+});
 
 describe("calculateSafeBalance", () => {
   it("does not count receivables by default", () => {

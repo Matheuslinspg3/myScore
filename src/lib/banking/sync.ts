@@ -9,16 +9,10 @@ import type {
   BankingAccount,
   BankingTransaction,
 } from "@/lib/banking/types";
+import { normalizeAccountType } from "@/lib/banking/account-type";
 
 function moneyToCents(value: number | undefined): number {
   return Math.round((value ?? 0) * 100);
-}
-
-function accountType(type: string): string {
-  if (type === "CREDIT") return "credit";
-  if (type === "SAVINGS") return "savings";
-  if (type === "PAYMENT_ACCOUNT") return "payment";
-  return "checking";
 }
 
 async function persistTransactions(
@@ -149,6 +143,7 @@ export async function syncPluggyItem(
     const skippedProviderCodes = new Set<string>();
 
     for (const account of accounts) {
+      const normalizedAccountType = normalizeAccountType(account.type);
       const { data: localAccount, error: accountError } = await supabase
         .from("accounts")
         .upsert(
@@ -158,7 +153,7 @@ export async function syncPluggyItem(
             institution_id: institution.id,
             provider_account_id: account.id,
             name: account.name,
-            account_type: accountType(account.type),
+            account_type: normalizedAccountType,
             subtype: account.subtype ?? null,
             masked_number: account.number
               ? account.number.slice(-4).padStart(account.number.length, "•")
@@ -176,7 +171,7 @@ export async function syncPluggyItem(
         .single();
       if (accountError) throw accountError;
 
-      if (account.type === "CREDIT") {
+      if (normalizedAccountType === "credit") {
         const limitCents = moneyToCents(
           account.creditData?.availableCreditLimit,
         );

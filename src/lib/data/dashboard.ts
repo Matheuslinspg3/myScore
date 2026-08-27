@@ -2,6 +2,10 @@ import { demoData } from "@/lib/demo-data";
 import { hasAiCredentials, isDemoMode } from "@/lib/env";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import {
+  isLiquidAccountType,
+  normalizeAccountType,
+} from "@/lib/banking/account-type";
 import type {
   Account,
   CashFlowPoint,
@@ -24,11 +28,15 @@ interface RawInstitution {
 interface RawAccount {
   id: string;
   name: string;
+  custom_name?: string | null;
   account_type: string;
+  masked_number?: string | null;
   balance_cents: number;
   available_balance_cents?: number | null;
+  include_in_safe_balance?: boolean | null;
   last_synced_at?: string | null;
   connection_id?: string;
+  raw_data?: { type?: string | null } | null;
   institutions?: RawInstitution | RawInstitution[] | null;
 }
 
@@ -99,13 +107,6 @@ function oneInstitution(
 ): RawInstitution {
   if (Array.isArray(value)) return value[0] ?? {};
   return value ?? {};
-}
-
-function toAccountType(value: string): Account["type"] {
-  if (value === "savings") return "savings";
-  if (value === "payment") return "payment";
-  if (value === "investment") return "investment";
-  return "checking";
 }
 
 function colorForCategory(name: string): string {
@@ -233,13 +234,20 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const accounts: Account[] = rawAccounts.map((row) => {
     const institution = oneInstitution(row.institutions);
+    const type = normalizeAccountType(row.raw_data?.type ?? row.account_type);
+    const customName = row.custom_name?.trim() || undefined;
     return {
       id: row.id,
       institution: institution.name ?? "Instituição",
-      name: row.name,
-      type: toAccountType(row.account_type),
+      name: customName ?? row.name,
+      providerName: row.name,
+      customName,
+      maskedNumber: row.masked_number ?? undefined,
+      type,
       balance: row.balance_cents,
       availableBalance: row.available_balance_cents ?? undefined,
+      includeInBalance:
+        isLiquidAccountType(type) && row.include_in_safe_balance !== false,
       color: institution.primary_color ?? "#7d6df2",
       lastSync: row.last_synced_at
         ? new Intl.DateTimeFormat("pt-BR", {

@@ -18,6 +18,7 @@ Vercel, Supabase e Pluggy.
 
 - dashboard responsivo com Saldo Seguro;
 - consolidação de contas e cartões;
+- nomes personalizados de conta e controle explícito do que entra no saldo;
 - extrato com busca e filtros;
 - gastos associados a pessoas;
 - recebíveis, contas a pagar e parcelamentos no banco;
@@ -140,6 +141,10 @@ Dados vindos do banco ficam em transactions. Tudo o que o usuário acrescenta
 fica em transaction_enrichments. Uma nova sincronização pode atualizar os dados
 bancários, mas nunca apaga categoria, pessoa, observação, tags ou vínculo de
 reembolso.
+
+O mesmo princípio vale para contas: `name` e `balance_cents` continuam sendo a
+origem Pluggy; `custom_name` e a preferência de inclusão no saldo são ajustes
+locais preservados nas sincronizações.
 
 ## Estado
 

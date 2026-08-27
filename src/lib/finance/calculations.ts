@@ -5,6 +5,7 @@ import type {
   Receivable,
   TimelineEvent,
 } from "@/types/finance";
+import { isLiquidAccountType } from "@/lib/banking/account-type";
 
 export interface SafeBalanceInput {
   bankBalance: Money;
@@ -22,9 +23,15 @@ export interface SafeBalanceResult {
   safeBalance: Money;
 }
 
+export function accountContributesToBalance(account: Account): boolean {
+  return (
+    isLiquidAccountType(account.type) && account.includeInBalance !== false
+  );
+}
+
 export function sumAccountBalances(accounts: Account[]): Money {
   return accounts
-    .filter((account) => account.type !== "investment")
+    .filter(accountContributesToBalance)
     .reduce((sum, account) => sum + account.balance, 0);
 }
 

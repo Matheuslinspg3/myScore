@@ -6,7 +6,9 @@ import { ConnectBankButton } from "@/components/connect-bank-button";
 import { Icon, type IconName } from "@/components/icon";
 import { AiWorkspace } from "@/components/ai-workspace";
 import { PersonForm } from "@/components/person-form";
+import { AccountSettingsForm } from "@/components/account-settings-form";
 import {
+  accountContributesToBalance,
   calculateSafeBalance,
   pendingPayables,
   pendingReceivables,
@@ -27,6 +29,16 @@ type View =
   | "planning"
   | "ai"
   | "accounts";
+
+const accountTypeLabels: Record<Account["type"], string> = {
+  checking: "Conta corrente",
+  savings: "Poupança",
+  payment: "Conta de pagamento",
+  credit: "Cartão de crédito",
+  investment: "Investimento",
+  cash: "Dinheiro",
+  other: "Outro tipo",
+};
 
 const navigation: Array<{
   id: View;
@@ -154,6 +166,9 @@ function Overview({
   setView: (view: View) => void;
 }) {
   const bankBalance = sumAccountBalances(data.accounts);
+  const includedAccounts = data.accounts.filter(
+    accountContributesToBalance,
+  ).length;
   const committed = pendingPayables(data.payables);
   const toReceive = pendingReceivables(data.receivables);
   const safe = calculateSafeBalance({
@@ -263,7 +278,11 @@ function Overview({
             value: bankBalance,
             icon: "wallet" as IconName,
             tone: "bg-violet-50 text-violet-600",
-            note: String(data.accounts.length) + " contas",
+            note:
+              String(includedAccounts) +
+              " de " +
+              String(data.accounts.length) +
+              " contas no total",
           },
           {
             label: "Fatura atual",
@@ -828,6 +847,11 @@ function AccountsView({
   hideValues: boolean;
 }) {
   const display = (value: number) => (hideValues ? "R$ ••••" : formatMoney(value));
+  const includedAccounts = data.accounts.filter(
+    accountContributesToBalance,
+  );
+  const excludedCount = data.accounts.length - includedAccounts.length;
+  const consolidatedBalance = sumAccountBalances(data.accounts);
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -839,39 +863,78 @@ function AccountsView({
         </div>
         <ConnectBankButton enabled={!data.demoMode} />
       </div>
+      <section className="rounded-2xl border border-violet-100 bg-violet-50/70 p-5">
+        <p className="text-xs font-semibold uppercase tracking-[.16em] text-violet-600">
+          Saldo bancário consolidado
+        </p>
+        <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
+          {display(consolidatedBalance)}
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-500">
+          {includedAccounts.length} conta(s) entram na soma
+          {excludedCount ? " e " + excludedCount + " ficam fora" : ""}. Cartões,
+          investimentos e tipos desconhecidos não são tratados como dinheiro
+          disponível.
+        </p>
+      </section>
       <div className="grid gap-4 lg:grid-cols-2">
         {data.accounts.map((account) => (
           <section
-            className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm"
+            className={
+              "rounded-2xl border bg-white p-5 shadow-sm " +
+              (!accountContributesToBalance(account)
+                ? "border-amber-200/80"
+                : "border-slate-200/70")
+            }
             key={account.id}
           >
             <div className="flex items-center gap-3">
               <AccountLogo account={account} />
               <div className="min-w-0 flex-1">
-                <h2 className="font-bold text-slate-900">
-                  {account.institution}
+                <p className="text-xs text-slate-400">{account.institution}</p>
+                <h2 className="truncate font-bold text-slate-900">
+                  {account.name}
                 </h2>
-                <p className="text-xs text-slate-400">{account.name}</p>
+                {account.customName && (
+                  <p className="truncate text-[11px] text-slate-400">
+                    Banco: {account.providerName}
+                  </p>
+                )}
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                <i className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Sincronizada
+              <span
+                className={
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold " +
+                  (!accountContributesToBalance(account)
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-emerald-50 text-emerald-700")
+                }
+              >
+                <i
+                  className={
+                    "h-1.5 w-1.5 rounded-full " +
+                    (!accountContributesToBalance(account)
+                      ? "bg-amber-500"
+                      : "bg-emerald-500")
+                  }
+                />
+                {accountContributesToBalance(account) ? "No total" : "Fora do total"}
               </span>
             </div>
-            <p className="mt-6 text-xs text-slate-400">Saldo disponível</p>
+            <p className="mt-6 text-xs text-slate-400">
+              Saldo informado pela Pluggy
+            </p>
             <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
-              {display(account.availableBalance ?? account.balance)}
+              {display(account.balance)}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              {account.maskedNumber ? account.maskedNumber + " · " : ""}
+              Tipo: {accountTypeLabels[account.type]}
             </p>
             <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
               <span className="text-xs text-slate-400">
                 Atualizada {account.lastSync}
               </span>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 text-xs font-semibold text-violet-600"
-              >
-                <Icon name="sync" className="h-3.5 w-3.5" /> Sincronizar
-              </button>
+              {!data.demoMode && <AccountSettingsForm account={account} />}
             </div>
           </section>
         ))}

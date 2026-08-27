@@ -1,4 +1,5 @@
 import type { DashboardData, Transaction } from "@/types/finance";
+import { sumAccountBalances } from "@/lib/finance/calculations";
 
 function reais(cents: number): number {
   return Number((cents / 100).toFixed(2));
@@ -14,9 +15,7 @@ export function buildFinancialSnapshot(
     scope:
       "Retrato do myScore. Valores monetários estão em reais e podem refletir apenas o histórico sincronizado.",
     totals: {
-      bankBalance: reais(
-        data.accounts.reduce((sum, account) => sum + account.balance, 0),
-      ),
+      bankBalance: reais(sumAccountBalances(data.accounts)),
       monthlyIncome: reais(data.monthlyIncome),
       monthlyExpense: reais(data.monthlyExpense),
       pendingReceivables: reais(
@@ -35,6 +34,7 @@ export function buildFinancialSnapshot(
       type: account.type,
       balance: reais(account.balance),
       availableBalance: reais(account.availableBalance ?? account.balance),
+      includedInBalance: account.includeInBalance !== false,
     })),
     cards: data.creditCards.map((card) => ({
       institution: card.institution,

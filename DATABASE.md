@@ -22,7 +22,7 @@ O banco é reproduzível por migrations em supabase/migrations.
 | settings | privacidade, reserva e projeção |
 | institutions | instituição por provider |
 | bank_connections | consentimento/item bancário |
-| accounts | contas e saldos |
+| accounts | contas, saldos bancários e preferências locais de exibição |
 | credit_cards | fatura e limites disponíveis |
 | transactions | verdade importada do banco/arquivo |
 | transaction_enrichments | categoria, pessoa, natureza, notas e tags |
@@ -66,6 +66,14 @@ ativo, não oferece políticas nem privilégios para `anon` ou `authenticated` e
 só é acessada por rotas autenticadas através de `service_role`.
 
 A migration responsável é `202608270004_ai_credentials.sql`.
+
+## Preferências de conta
+
+O nome recebido da Pluggy permanece em `accounts.name`. Um apelido escolhido
+no dashboard fica em `custom_name`, e `include_in_safe_balance` permite retirar
+uma conta duplicada do consolidado sem excluir a conta nem suas transações.
+Cartões, investimentos e tipos desconhecidos são excluídos do saldo por regra
+de aplicação. A migration é `202608270006_account_preferences.sql`.
 
 ## Aplicar migrations
 

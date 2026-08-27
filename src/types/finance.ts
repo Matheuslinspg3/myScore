@@ -1,6 +1,13 @@
 export type Money = number;
 
-export type AccountType = "checking" | "savings" | "payment" | "investment";
+export type AccountType =
+  | "checking"
+  | "savings"
+  | "payment"
+  | "credit"
+  | "investment"
+  | "cash"
+  | "other";
 export type ConnectionStatus = "healthy" | "syncing" | "attention" | "offline";
 export type TransactionNature =
   | "expense"
@@ -18,9 +25,13 @@ export interface Account {
   id: string;
   institution: string;
   name: string;
+  providerName?: string;
+  customName?: string;
+  maskedNumber?: string;
   type: AccountType;
   balance: Money;
   availableBalance?: Money;
+  includeInBalance?: boolean;
   color: string;
   lastSync: string;
   status: ConnectionStatus;

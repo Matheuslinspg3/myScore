@@ -30,6 +30,8 @@ ser `AI_SETTINGS_ENCRYPTION_KEY`; na ausência dele, é derivado da própria
 - RLS com auth.uid() em leitura e escrita;
 - service role restrita à sincronização e ao webhook;
 - clientUserId Pluggy validado antes de persistir um Item.
+- nome e saldo originais da Pluggy não são alterados por preferências de conta;
+  alias e inclusão no consolidado ficam em campos locais separados.
 
 ### Rotas
 
