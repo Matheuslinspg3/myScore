@@ -38,13 +38,23 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
         error?: string;
         databaseCode?: string;
         providerStatus?: number;
+        providerOperation?: string;
+        providerCode?: string;
       };
       if (!response.ok) {
+        const pluggyDetail =
+          body.providerStatus == null
+            ? ""
+            : " Código Pluggy: " +
+              body.providerStatus +
+              (body.providerCode ? " (" + body.providerCode + ")" : "") +
+              (body.providerOperation
+                ? " — etapa: " + body.providerOperation
+                : "") +
+              ".";
         const diagnostic = body.databaseCode
           ? ` Código técnico: ${body.databaseCode}.`
-          : body.providerStatus
-            ? ` Código Pluggy: ${body.providerStatus}.`
-            : "";
+          : pluggyDetail;
         throw new Error((body.error ?? "Falha ao sincronizar.") + diagnostic);
       }
 

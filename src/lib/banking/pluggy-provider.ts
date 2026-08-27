@@ -20,7 +20,11 @@ interface ListResponse<T> {
 }
 
 export class PluggyApiError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly operation: "item" | "accounts" | "transactions" | "other",
+    readonly providerCode?: string,
+  ) {
     super("PLUGGY_API_" + status);
     this.name = "PluggyApiError";
   }
@@ -81,7 +85,21 @@ export class PluggyBankingProvider implements BankingProvider {
     });
 
     if (!response.ok) {
-      throw new PluggyApiError(response.status);
+      let providerCode: string | undefined;
+      try {
+        const body = (await response.json()) as { code?: unknown };
+        if (typeof body.code === "string") providerCode = body.code;
+      } catch {
+        // Some provider errors are returned without a JSON body.
+      }
+      const operation = path.startsWith("/items/")
+        ? "item"
+        : path.startsWith("/accounts")
+          ? "accounts"
+          : path.startsWith("/v2/transactions")
+            ? "transactions"
+            : "other";
+      throw new PluggyApiError(response.status, operation, providerCode);
     }
 
     if (response.status === 204) return undefined as T;

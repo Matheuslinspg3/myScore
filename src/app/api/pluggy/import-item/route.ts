@@ -81,7 +81,12 @@ export async function POST(request: Request) {
               ? "Este item não pertence à aplicação Pluggy configurada."
               : "A Pluggy não conseguiu fornecer os dados deste item.";
       return NextResponse.json(
-        { error: message, providerStatus: error.status },
+        {
+          error: message,
+          providerStatus: error.status,
+          providerOperation: error.operation,
+          providerCode: error.providerCode,
+        },
         { status: 502 },
       );
     }
