@@ -7,6 +7,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { AiWorkspace } from "@/components/ai-workspace";
 import { PersonForm } from "@/components/person-form";
 import { AccountSettingsForm } from "@/components/account-settings-form";
+import { CardSettingsForm } from "@/components/card-settings-form";
 import {
   accountContributesToBalance,
   calculateSafeBalance,
@@ -14,6 +15,7 @@ import {
   pendingReceivables,
   projectBalance,
   sumAccountBalances,
+  sumCreditCardInvoices,
 } from "@/lib/finance/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import type {
@@ -169,6 +171,10 @@ function Overview({
   const includedAccounts = data.accounts.filter(
     accountContributesToBalance,
   ).length;
+  const includedCards = data.creditCards.filter(
+    (card) => card.includeInInvoice !== false,
+  ).length;
+  const consolidatedInvoice = sumCreditCardInvoices(data.creditCards);
   const committed = pendingPayables(data.payables);
   const toReceive = pendingReceivables(data.receivables);
   const safe = calculateSafeBalance({
@@ -286,10 +292,14 @@ function Overview({
           },
           {
             label: "Fatura atual",
-            value: data.creditCards.reduce((sum, card) => sum + card.invoice, 0),
+            value: consolidatedInvoice,
             icon: "card" as IconName,
             tone: "bg-rose-50 text-rose-600",
-            note: "fecha em breve",
+            note:
+              String(includedCards) +
+              " de " +
+              String(data.creditCards.length) +
+              " cartões na soma",
           },
           {
             label: "A receber",
@@ -852,6 +862,11 @@ function AccountsView({
   );
   const excludedCount = data.accounts.length - includedAccounts.length;
   const consolidatedBalance = sumAccountBalances(data.accounts);
+  const includedCards = data.creditCards.filter(
+    (card) => card.includeInInvoice !== false,
+  );
+  const excludedCardCount = data.creditCards.length - includedCards.length;
+  const consolidatedInvoice = sumCreditCardInvoices(data.creditCards);
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -920,12 +935,15 @@ function AccountsView({
                 {accountContributesToBalance(account) ? "No total" : "Fora do total"}
               </span>
             </div>
-            <p className="mt-6 text-xs text-slate-400">
-              Saldo informado pela Pluggy
-            </p>
+            <p className="mt-6 text-xs text-slate-400">Saldo usado no myScore</p>
             <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
               {display(account.balance)}
             </p>
+            {account.balanceOverride != null && (
+              <p className="mt-1 text-xs text-violet-600">
+                Pluggy: {display(account.providerBalance ?? account.balance)}
+              </p>
+            )}
             <p className="mt-1 text-xs text-slate-400">
               {account.maskedNumber ? account.maskedNumber + " · " : ""}
               Tipo: {accountTypeLabels[account.type]}
@@ -942,25 +960,70 @@ function AccountsView({
       <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
         <SectionHeader
           title="Cartões"
-          subtitle="Faturas e limites informados pela instituição"
+          subtitle="Confira cada origem e retire duplicidades da soma"
         />
+        <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[.16em] text-rose-600">
+            Fatura consolidada
+          </p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
+            {display(consolidatedInvoice)}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            {includedCards.length} cartão(ões) entram na soma
+            {excludedCardCount
+              ? " e " + excludedCardCount + " ficam fora"
+              : ""}
+            . Ajustes locais não alteram o valor original da Pluggy.
+          </p>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.creditCards.map((card) => {
             const used = card.limit ? (card.invoice / card.limit) * 100 : 0;
+            const included = card.includeInInvoice !== false;
             return (
               <div
-                className="overflow-hidden rounded-2xl bg-slate-950 p-5 text-white"
+                className={
+                  "overflow-hidden rounded-2xl border p-5 text-white " +
+                  (included
+                    ? "border-slate-800 bg-slate-950"
+                    : "border-amber-400/40 bg-slate-900 opacity-75")
+                }
                 key={card.id}
               >
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs text-slate-400">{card.institution}</p>
-                    <p className="mt-1 font-semibold">{card.name}</p>
+                    <p className="mt-1 truncate font-semibold">{card.name}</p>
+                    {card.customName && (
+                      <p className="truncate text-[11px] text-slate-500">
+                        Pluggy: {card.providerName}
+                      </p>
+                    )}
+                    {card.lastFour && (
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Final {card.lastFour}
+                      </p>
+                    )}
                   </div>
-                  <Icon name="card" className="text-slate-400" />
+                  <span
+                    className={
+                      "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold " +
+                      (included
+                        ? "bg-emerald-400/10 text-emerald-300"
+                        : "bg-amber-400/10 text-amber-300")
+                    }
+                  >
+                    {included ? "Na fatura" : "Fora da fatura"}
+                  </span>
                 </div>
                 <p className="mt-8 text-xs text-slate-400">Fatura atual</p>
                 <p className="mt-1 text-2xl font-bold">{display(card.invoice)}</p>
+                {card.invoiceOverride != null && (
+                  <p className="mt-1 text-xs text-violet-300">
+                    Pluggy: {display(card.providerInvoice ?? card.invoice)}
+                  </p>
+                )}
                 <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
@@ -971,9 +1034,19 @@ function AccountsView({
                   <span>{Math.round(used)}% usado</span>
                   <span>{display(card.availableLimit)} livre</span>
                 </div>
+                {!data.demoMode && (
+                  <div className="mt-4 flex justify-end border-t border-white/10 pt-4">
+                    <CardSettingsForm card={card} />
+                  </div>
+                )}
               </div>
             );
           })}
+          {!data.creditCards.length && (
+            <p className="col-span-full rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
+              Nenhum cartão foi importado.
+            </p>
+          )}
         </div>
       </section>
     </div>

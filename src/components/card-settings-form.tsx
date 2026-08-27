@@ -3,56 +3,57 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/icon";
-import { isLiquidAccountType } from "@/lib/banking/account-type";
 import { centsToInput, inputToCents } from "@/lib/money-input";
-import type { Account } from "@/types/finance";
+import type { CreditCard } from "@/types/finance";
 
-export function AccountSettingsForm({ account }: { account: Account }) {
+export function CardSettingsForm({ card }: { card: CreditCard }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [customName, setCustomName] = useState(account.customName ?? "");
-  const [includeInBalance, setIncludeInBalance] = useState(
-    account.includeInBalance !== false,
+  const [customName, setCustomName] = useState(card.customName ?? "");
+  const [invoiceOverride, setInvoiceOverride] = useState(
+    centsToInput(card.invoiceOverride),
   );
-  const [balanceOverride, setBalanceOverride] = useState(
-    centsToInput(account.balanceOverride),
+  const [includeInInvoice, setIncludeInInvoice] = useState(
+    card.includeInInvoice !== false,
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-  const canInclude = isLiquidAccountType(account.type);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setError("");
     try {
-      const balanceOverrideCents = inputToCents(balanceOverride);
+      const invoiceOverrideCents = inputToCents(invoiceOverride);
+      if (invoiceOverrideCents != null && invoiceOverrideCents < 0) {
+        throw new Error("A fatura não pode ser negativa.");
+      }
       const response = await fetch(
-        "/api/accounts/" + encodeURIComponent(account.id),
+        "/api/cards/" + encodeURIComponent(card.id),
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             customName: customName.trim() || null,
-            includeInBalance: canInclude && includeInBalance,
-            balanceOverrideCents,
+            invoiceOverrideCents,
+            includeInInvoice,
           }),
         },
       );
       const payload = (await response.json()) as {
         error?: string;
-        account?: {
+        card?: {
           customName?: string | null;
-          balanceOverride?: number | null;
-          includeInBalance?: boolean;
+          invoiceOverride?: number | null;
+          includeInInvoice?: boolean;
         };
       };
       if (!response.ok) {
         throw new Error(payload.error ?? "Não foi possível salvar.");
       }
-      setCustomName(payload.account?.customName ?? "");
-      setBalanceOverride(centsToInput(payload.account?.balanceOverride ?? undefined));
-      setIncludeInBalance(Boolean(payload.account?.includeInBalance));
+      setCustomName(payload.card?.customName ?? "");
+      setInvoiceOverride(centsToInput(payload.card?.invoiceOverride ?? undefined));
+      setIncludeInInvoice(Boolean(payload.card?.includeInInvoice));
       setOpen(false);
       router.refresh();
     } catch (caught) {
@@ -69,14 +70,14 @@ export function AccountSettingsForm({ account }: { account: Account }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-xs font-semibold text-violet-600"
+        className="flex items-center gap-1.5 text-xs font-semibold text-violet-300 transition hover:text-white"
       >
-        <Icon name="edit" className="h-3.5 w-3.5" /> Editar
+        <Icon name="edit" className="h-3.5 w-3.5" /> Ajustar
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 text-slate-900 backdrop-blur-sm"
           role="presentation"
           onMouseDown={(event) => {
             if (event.currentTarget === event.target && !pending) setOpen(false);
@@ -85,22 +86,22 @@ export function AccountSettingsForm({ account }: { account: Account }) {
           <section
             role="dialog"
             aria-modal="true"
-            aria-labelledby={"account-settings-" + account.id}
-            className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl sm:p-6"
+            aria-labelledby={"card-settings-" + card.id}
+            className="w-full max-w-lg rounded-3xl bg-white p-5 text-left shadow-2xl sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-600">
-                  {account.institution}
+                  {card.institution}
                 </p>
                 <h2
-                  id={"account-settings-" + account.id}
+                  id={"card-settings-" + card.id}
                   className="mt-1 text-xl font-bold text-slate-950"
                 >
-                  Configurar conta
+                  Configurar cartão
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  O nome original e o saldo da Pluggy não serão alterados.
+                  A fatura original da Pluggy continuará preservada.
                 </p>
               </div>
               <button
@@ -122,57 +123,40 @@ export function AccountSettingsForm({ account }: { account: Account }) {
                   value={customName}
                   onChange={(event) => setCustomName(event.target.value)}
                   maxLength={80}
-                  autoFocus
-                  placeholder={account.providerName ?? account.name}
+                  placeholder={card.providerName ?? card.name}
                   className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                 />
-                <span className="mt-1.5 block text-xs text-slate-400">
-                  Deixe vazio para voltar ao nome informado pelo banco.
-                </span>
               </label>
 
               <label className="block">
                 <span className="text-xs font-semibold text-slate-600">
-                  Saldo usado no myScore
+                  Fatura usada no myScore
                 </span>
                 <input
-                  value={balanceOverride}
-                  onChange={(event) => setBalanceOverride(event.target.value)}
+                  value={invoiceOverride}
+                  onChange={(event) => setInvoiceOverride(event.target.value)}
                   inputMode="decimal"
-                  placeholder={centsToInput(
-                    account.providerBalance ?? account.balance,
-                  )}
+                  placeholder={centsToInput(card.providerInvoice ?? card.invoice)}
                   className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                 />
                 <span className="mt-1.5 block text-xs leading-relaxed text-slate-400">
-                  Opcional. Deixe vazio para usar sempre o saldo da Pluggy.
-                  Um ajuste fica separado e pode ser removido depois.
+                  Deixe vazio para voltar ao valor enviado pela Pluggy.
                 </span>
               </label>
 
-              <label
-                className={
-                  "flex items-start gap-3 rounded-xl border px-4 py-3 " +
-                  (canInclude
-                    ? "border-slate-200"
-                    : "border-slate-100 bg-slate-50")
-                }
-              >
+              <label className="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3">
                 <input
                   type="checkbox"
-                  checked={canInclude && includeInBalance}
-                  onChange={(event) => setIncludeInBalance(event.target.checked)}
-                  disabled={!canInclude}
+                  checked={includeInInvoice}
+                  onChange={(event) => setIncludeInInvoice(event.target.checked)}
                   className="mt-0.5 h-4 w-4 accent-violet-600"
                 />
                 <span>
                   <span className="block text-sm font-semibold text-slate-800">
-                    Somar no saldo total
+                    Somar na fatura atual
                   </span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-slate-400">
-                    {canInclude
-                      ? "Desmarque se esta conta estiver duplicada ou não representar dinheiro disponível."
-                      : "Cartões, investimentos e tipos desconhecidos ficam fora do saldo bancário."}
+                    Desmarque se este cartão estiver duplicado ou inativo.
                   </span>
                 </span>
               </label>

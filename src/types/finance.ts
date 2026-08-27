@@ -30,6 +30,8 @@ export interface Account {
   maskedNumber?: string;
   type: AccountType;
   balance: Money;
+  providerBalance?: Money;
+  balanceOverride?: Money;
   availableBalance?: Money;
   includeInBalance?: boolean;
   color: string;
@@ -41,7 +43,13 @@ export interface CreditCard {
   id: string;
   institution: string;
   name: string;
+  providerName?: string;
+  customName?: string;
+  lastFour?: string;
   invoice: Money;
+  providerInvoice?: Money;
+  invoiceOverride?: Money;
+  includeInInvoice?: boolean;
   limit: Money;
   availableLimit: Money;
   closingDay?: number;

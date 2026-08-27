@@ -4,8 +4,9 @@ import {
   projectBalance,
   splitInstallments,
   sumAccountBalances,
+  sumCreditCardInvoices,
 } from "@/lib/finance/calculations";
-import type { Account } from "@/types/finance";
+import type { Account, CreditCard } from "@/types/finance";
 
 function account(
   type: Account["type"],
@@ -37,6 +38,33 @@ describe("sumAccountBalances", () => {
         account("other", 500_000, true),
       ]),
     ).toBe(420_000);
+  });
+});
+
+describe("sumCreditCardInvoices", () => {
+  it("soma somente faturas incluídas e nunca subtrai valores negativos", () => {
+    const card = (
+      id: string,
+      invoice: number,
+      includeInInvoice?: boolean,
+    ): CreditCard => ({
+      id,
+      institution: "Banco",
+      name: "Cartão",
+      invoice,
+      includeInInvoice,
+      limit: 1_000_000,
+      availableLimit: 500_000,
+      color: "#000000",
+    });
+
+    expect(
+      sumCreditCardInvoices([
+        card("a", 117_090),
+        card("duplicado", 1_000_000, false),
+        card("saldo-credor", -5_000),
+      ]),
+    ).toBe(117_090);
   });
 });
 

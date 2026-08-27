@@ -1,5 +1,8 @@
 import type { DashboardData, Transaction } from "@/types/finance";
-import { sumAccountBalances } from "@/lib/finance/calculations";
+import {
+  sumAccountBalances,
+  sumCreditCardInvoices,
+} from "@/lib/finance/calculations";
 
 function reais(cents: number): number {
   return Number((cents / 100).toFixed(2));
@@ -27,6 +30,7 @@ export function buildFinancialSnapshot(
       pendingPayables: reais(
         data.payables.reduce((sum, item) => sum + item.amount, 0),
       ),
+      currentCardInvoices: reais(sumCreditCardInvoices(data.creditCards)),
     },
     accounts: data.accounts.map((account) => ({
       institution: account.institution,
@@ -40,6 +44,8 @@ export function buildFinancialSnapshot(
       institution: card.institution,
       name: card.name,
       invoice: reais(card.invoice),
+      providerInvoice: reais(card.providerInvoice ?? card.invoice),
+      includedInInvoice: card.includeInInvoice !== false,
       limit: reais(card.limit),
       availableLimit: reais(card.availableLimit),
       dueDay: card.dueDay,

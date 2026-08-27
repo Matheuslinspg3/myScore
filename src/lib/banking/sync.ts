@@ -172,10 +172,13 @@ export async function syncPluggyItem(
       if (accountError) throw accountError;
 
       if (normalizedAccountType === "credit") {
-        const limitCents = moneyToCents(
+        const invoiceCents = Math.abs(moneyToCents(account.balance));
+        const availableLimitCents = moneyToCents(
           account.creditData?.availableCreditLimit,
         );
-        const invoiceCents = Math.abs(moneyToCents(account.balance));
+        const reportedLimitCents = moneyToCents(
+          account.creditData?.creditLimit,
+        );
         const { error: cardError } = await supabase
           .from("credit_cards")
           .upsert(
@@ -185,9 +188,11 @@ export async function syncPluggyItem(
               provider_card_id: account.id,
               name: account.name,
               brand: account.creditData?.brand ?? null,
+              last_four: account.number?.slice(-4) ?? null,
               invoice_cents: invoiceCents,
-              available_limit_cents: limitCents,
-              total_limit_cents: limitCents + invoiceCents,
+              available_limit_cents: availableLimitCents,
+              total_limit_cents:
+                reportedLimitCents || availableLimitCents + invoiceCents,
               closing_date: account.creditData?.balanceCloseDate ?? null,
               due_date: account.creditData?.balanceDueDate ?? null,
               raw_data: account.creditData ?? {},

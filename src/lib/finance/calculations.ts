@@ -1,5 +1,6 @@
 import type {
   Account,
+  CreditCard,
   Money,
   Payable,
   Receivable,
@@ -33,6 +34,12 @@ export function sumAccountBalances(accounts: Account[]): Money {
   return accounts
     .filter(accountContributesToBalance)
     .reduce((sum, account) => sum + account.balance, 0);
+}
+
+export function sumCreditCardInvoices(cards: CreditCard[]): Money {
+  return cards
+    .filter((card) => card.includeInInvoice !== false)
+    .reduce((sum, card) => sum + Math.max(0, card.invoice), 0);
 }
 
 export function pendingPayables(

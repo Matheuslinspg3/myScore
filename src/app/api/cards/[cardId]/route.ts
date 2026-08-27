@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { normalizeAccountType, isLiquidAccountType } from "@/lib/banking/account-type";
 import { isSameOrigin } from "@/lib/security/csrf";
 import { createClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   customName: z.string().trim().max(80).nullable(),
-  includeInBalance: z.boolean(),
-  balanceOverrideCents: z
+  includeInInvoice: z.boolean(),
+  invoiceOverrideCents: z
     .number()
     .int()
-    .min(-100_000_000_000_000)
+    .min(0)
     .max(100_000_000_000_000)
     .nullable(),
 });
@@ -22,7 +21,7 @@ function migrationMissing(code?: string): boolean {
 
 export async function PATCH(
   request: Request,
-  context: { params: Promise<{ accountId: string }> },
+  context: { params: Promise<{ cardId: string }> },
 ) {
   if (!isSameOrigin(request)) {
     return NextResponse.json({ error: "Origem inválida." }, { status: 403 });
@@ -31,54 +30,41 @@ export async function PATCH(
   try {
     const user = await requireUser();
     const body = bodySchema.parse(await request.json());
-    const { accountId } = await context.params;
-    if (!z.string().uuid().safeParse(accountId).success) {
-      return NextResponse.json({ error: "Conta inválida." }, { status: 400 });
+    const { cardId } = await context.params;
+    if (!z.string().uuid().safeParse(cardId).success) {
+      return NextResponse.json({ error: "Cartão inválido." }, { status: 400 });
     }
 
     const supabase = await createClient();
-    const { data: current, error: currentError } = await supabase
-      .from("accounts")
-      .select("id, account_type, raw_data")
-      .eq("id", accountId)
-      .eq("owner_id", user.id)
-      .maybeSingle();
-    if (currentError) throw currentError;
-    if (!current) {
-      return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
-    }
-
-    const rawData = current.raw_data as { type?: string | null } | null;
-    const type = normalizeAccountType(rawData?.type ?? current.account_type);
-    const includeInBalance =
-      isLiquidAccountType(type) && body.includeInBalance;
     const customName = body.customName?.trim() || null;
-
     const { data, error } = await supabase
-      .from("accounts")
+      .from("credit_cards")
       .update({
         custom_name: customName,
-        include_in_safe_balance: includeInBalance,
-        balance_override_cents: body.balanceOverrideCents,
+        invoice_override_cents: body.invoiceOverrideCents,
+        include_in_invoice: body.includeInInvoice,
       })
-      .eq("id", accountId)
+      .eq("id", cardId)
       .eq("owner_id", user.id)
       .select(
-        "id, name, custom_name, balance_cents, balance_override_cents, include_in_safe_balance",
+        "id, name, custom_name, invoice_cents, invoice_override_cents, include_in_invoice",
       )
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    if (!data) {
+      return NextResponse.json({ error: "Cartão não encontrado." }, { status: 404 });
+    }
 
     return NextResponse.json({
-      account: {
+      card: {
         id: data.id,
         name: data.custom_name || data.name,
         providerName: data.name,
         customName: data.custom_name,
-        balance: data.balance_override_cents ?? data.balance_cents,
-        providerBalance: data.balance_cents,
-        balanceOverride: data.balance_override_cents,
-        includeInBalance,
+        invoice: data.invoice_override_cents ?? data.invoice_cents,
+        providerInvoice: data.invoice_cents,
+        invoiceOverride: data.invoice_override_cents,
+        includeInInvoice: data.include_in_invoice,
       },
     });
   } catch (error) {
@@ -95,14 +81,14 @@ export async function PATCH(
     if (migrationMissing(databaseCode)) {
       return NextResponse.json(
         {
-          error: "A edição de contas ainda precisa da migration do Supabase.",
+          error: "O ajuste de fatura ainda precisa da migration do Supabase.",
           setupRequired: true,
         },
         { status: 503 },
       );
     }
     return NextResponse.json(
-      { error: "Não foi possível atualizar a conta." },
+      { error: "Não foi possível atualizar o cartão." },
       { status: 500 },
     );
   }

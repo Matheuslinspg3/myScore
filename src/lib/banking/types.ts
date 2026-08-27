@@ -12,6 +12,7 @@ export interface BankingAccount {
     balanceCloseDate?: string;
     balanceDueDate?: string;
     availableCreditLimit?: number;
+    creditLimit?: number;
     balanceForeignCurrency?: number;
     minimumPayment?: number;
   };

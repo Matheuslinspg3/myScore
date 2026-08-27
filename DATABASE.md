@@ -23,7 +23,7 @@ O banco é reproduzível por migrations em supabase/migrations.
 | institutions | instituição por provider |
 | bank_connections | consentimento/item bancário |
 | accounts | contas, saldos bancários e preferências locais de exibição |
-| credit_cards | fatura e limites disponíveis |
+| credit_cards | fatura original, correção local, inclusão no total e limites |
 | transactions | verdade importada do banco/arquivo |
 | transaction_enrichments | categoria, pessoa, natureza, notas e tags |
 | categories | categorias e subcategorias |
@@ -74,6 +74,18 @@ no dashboard fica em `custom_name`, e `include_in_safe_balance` permite retirar
 uma conta duplicada do consolidado sem excluir a conta nem suas transações.
 Cartões, investimentos e tipos desconhecidos são excluídos do saldo por regra
 de aplicação. A migration é `202608270006_account_preferences.sql`.
+
+## Conferência de saldos e faturas
+
+`accounts.balance_cents` e `credit_cards.invoice_cents` preservam os valores
+recebidos da Pluggy. Quando o provedor reporta um valor defasado, representa
+uma conta duplicada ou usa uma convenção diferente da instituição, o usuário
+pode preencher `balance_override_cents` ou `invoice_override_cents`. Os totais
+usam o ajuste, mas a interface continua mostrando o valor de origem para
+auditoria. `include_in_invoice` permite retirar cartões duplicados ou inativos
+da fatura consolidada. A sincronização não escreve nesses campos locais.
+
+A migration responsável é `202608270007_balance_overrides.sql`.
 
 ## Aplicar migrations
 

@@ -32,6 +32,7 @@ interface RawAccount {
   account_type: string;
   masked_number?: string | null;
   balance_cents: number;
+  balance_override_cents?: number | null;
   available_balance_cents?: number | null;
   include_in_safe_balance?: boolean | null;
   last_synced_at?: string | null;
@@ -43,7 +44,11 @@ interface RawAccount {
 interface RawCard {
   id: string;
   name: string;
+  custom_name?: string | null;
+  last_four?: string | null;
   invoice_cents: number;
+  invoice_override_cents?: number | null;
+  include_in_invoice?: boolean | null;
   total_limit_cents?: number | null;
   available_limit_cents?: number | null;
   closing_date?: string | null;
@@ -236,6 +241,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     const institution = oneInstitution(row.institutions);
     const type = normalizeAccountType(row.raw_data?.type ?? row.account_type);
     const customName = row.custom_name?.trim() || undefined;
+    const balanceOverride = row.balance_override_cents ?? undefined;
     return {
       id: row.id,
       institution: institution.name ?? "Instituição",
@@ -244,7 +250,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       customName,
       maskedNumber: row.masked_number ?? undefined,
       type,
-      balance: row.balance_cents,
+      balance: balanceOverride ?? row.balance_cents,
+      providerBalance: row.balance_cents,
+      balanceOverride,
       availableBalance: row.available_balance_cents ?? undefined,
       includeInBalance:
         isLiquidAccountType(type) && row.include_in_safe_balance !== false,
@@ -263,11 +271,19 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const creditCards: CreditCard[] = rawCards.map((row) => {
     const institution = oneInstitution(row.accounts?.institutions);
+    const customName = row.custom_name?.trim() || undefined;
+    const invoiceOverride = row.invoice_override_cents ?? undefined;
     return {
       id: row.id,
       institution: institution.name ?? "Instituição",
-      name: row.name,
-      invoice: row.invoice_cents,
+      name: customName ?? row.name,
+      providerName: row.name,
+      customName,
+      lastFour: row.last_four ?? undefined,
+      invoice: invoiceOverride ?? row.invoice_cents,
+      providerInvoice: row.invoice_cents,
+      invoiceOverride,
+      includeInInvoice: row.include_in_invoice !== false,
       limit: row.total_limit_cents ?? 0,
       availableLimit: row.available_limit_cents ?? 0,
       closingDay: row.closing_date
