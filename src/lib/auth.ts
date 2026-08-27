@@ -5,7 +5,7 @@ export async function getCurrentUser() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  return user;
+  return user?.email_confirmed_at ? user : null;
 }
 
 export async function requireUser() {

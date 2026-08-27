@@ -35,8 +35,9 @@ export default async function LoginPage() {
               Bem-vindo de volta.
             </h1>
             <p className="mt-3 max-w-sm leading-relaxed text-slate-500">
-              Entre por um link único enviado ao seu e-mail. Nenhuma senha
-              bancária é armazenada pelo myScore.
+              Crie sua conta com e-mail e senha e confirme seu endereço antes
+              do primeiro acesso. Nenhuma senha bancária é armazenada pelo
+              myScore.
             </p>
           </div>
           {isSupabaseConfigured() ? (

@@ -26,7 +26,7 @@ Vercel, Supabase e Pluggy.
 - sugestões de reconciliação e transferência interna;
 - integração Pluggy por provider desacoplado;
 - sincronização idempotente de contas e transações pela API v2;
-- autenticação por magic link com Supabase Auth;
+- cadastro e login com e-mail e senha, com confirmação obrigatória de e-mail;
 - Row Level Security em todas as tabelas financeiras;
 - webhook autenticado e idempotente;
 - APIs validadas para pessoas, recebíveis, contas a pagar e enriquecimentos;
@@ -83,6 +83,10 @@ x-myscore-webhook-secret: O_MESMO_VALOR_DE_PLUGGY_WEBHOOK_SECRET
 ~~~
 
 7. Cadastre no Supabase Auth as URLs de callback local e de produção.
+
+No Supabase, acesse Authentication > Providers > Email e deixe **Confirm
+email** ativado. O cadastro envia um link para o e-mail informado e o acesso
+só é liberado depois da confirmação.
 
 Detalhes completos estão em DEPLOYMENT.md e OPEN_FINANCE.md.
 

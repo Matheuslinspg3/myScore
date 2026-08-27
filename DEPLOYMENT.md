@@ -19,6 +19,10 @@ https://SEU_DOMINIO/auth/callback
 
 Copie Project URL, anon key e service role. A service role é somente servidor.
 
+Em Authentication > Providers > Email, mantenha **Confirm email** ativado.
+Assim, uma conta nova só poderá entrar depois de clicar no link recebido por
+e-mail.
+
 ## 2. Pluggy
 
 Para uso pessoal gratuito:
@@ -53,7 +57,7 @@ Variáveis de produção:
 | Variável | Visibilidade |
 |---|---|
 | NEXT_PUBLIC_APP_URL | pública |
-| NEXT_PUBLIC_DEMO_MODE=false | pública |
+| NEXT_PUBLIC_DEMO_MODE | pública |
 | NEXT_PUBLIC_SUPABASE_URL | pública |
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | pública, protegida por RLS |
 | SUPABASE_SERVICE_ROLE_KEY | somente servidor |
@@ -69,13 +73,14 @@ Defina NEXT_PUBLIC_APP_URL como a URL final HTTPS.
 Depois do deploy:
 
 1. abra /api/health e confira Supabase e Pluggy;
-2. solicite o magic link;
-3. conecte uma instituição;
-4. confira bank_connections e sync_logs;
-5. sincronize novamente e confirme que transações não duplicaram;
-6. classifique uma transação e sincronize novamente;
-7. confirme que o enriquecimento permaneceu;
-8. teste a interface instalada no celular.
+2. crie uma conta, confirme o e-mail e entre com e-mail e senha;
+3. teste também a recuperação de senha;
+4. conecte uma instituição;
+5. confira bank_connections e sync_logs;
+6. sincronize novamente e confirme que transações não duplicaram;
+7. classifique uma transação e sincronize novamente;
+8. confirme que o enriquecimento permaneceu;
+9. teste a interface instalada no celular.
 
 ## Modo demonstração
 
