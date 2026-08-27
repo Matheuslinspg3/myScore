@@ -16,6 +16,7 @@ interface PluggySuccess {
 
 export function ConnectBankButton({ enabled }: { enabled: boolean }) {
   const [token, setToken] = useState<string | null>(null);
+  const [document, setDocument] = useState("");
   const [state, setState] = useState<
     "idle" | "token" | "connecting" | "syncing" | "done" | "error"
   >("idle");
@@ -26,6 +27,14 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
       setMessage("Configure Supabase e Pluggy para conectar sua conta real.");
       return;
     }
+
+    const normalizedDocument = document.replace(/\D/g, "");
+    if (![11, 14].includes(normalizedDocument.length)) {
+      setState("error");
+      setMessage("Informe um CPF ou CNPJ válido para continuar.");
+      return;
+    }
+
     setState("token");
     setMessage("");
     try {
@@ -90,15 +99,45 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
           {message}
         </p>
       )}
+      <label className="mt-4 block max-w-sm">
+        <span className="mb-2 block text-xs font-semibold text-slate-600">
+          CPF ou CNPJ para o Open Finance
+        </span>
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={document}
+          onChange={(event) =>
+            setDocument(event.target.value.replace(/\D/g, "").slice(0, 14))
+          }
+          placeholder="Somente números"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+        />
+        <span className="mt-1.5 block text-xs leading-relaxed text-slate-400">
+          Usado apenas durante a conexão e não armazenado pelo myScore.
+        </span>
+      </label>
       {token && state === "connecting" && (
         <PluggyConnect
           connectToken={token}
           includeSandbox={false}
+          forceOauthInBrowser
+          openFinanceParameters={
+            document.replace(/\D/g, "").length === 11
+              ? { cpf: document.replace(/\D/g, "") }
+              : { cnpj: document.replace(/\D/g, "") }
+          }
           onSuccess={handleSuccess}
-          onError={() => {
+          onError={(error) => {
             setState("error");
             setToken(null);
-            setMessage("A conexão não foi concluída.");
+            setMessage(error.message || "A conexão não foi concluída.");
+          }}
+          onLoadError={(error) => {
+            setState("error");
+            setToken(null);
+            setMessage(error.message || "Não foi possível carregar a conexão.");
           }}
           onClose={() => {
             setState("idle");
