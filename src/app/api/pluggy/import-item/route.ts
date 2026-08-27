@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPluggyProvider } from "@/lib/banking/pluggy-provider";
+import {
+  getPluggyProvider,
+  PluggyApiError,
+} from "@/lib/banking/pluggy-provider";
 import { syncPluggyItem } from "@/lib/banking/sync";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { isSameOrigin } from "@/lib/security/csrf";
@@ -66,6 +69,39 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "FORBIDDEN_ITEM") {
       return NextResponse.json({ error: "Item não autorizado." }, { status: 403 });
     }
+    if (error instanceof PluggyApiError) {
+      const message =
+        error.status === 401
+          ? "A Pluggy rejeitou as credenciais desta aplicação."
+          : error.status === 403
+            ? "A aplicação Pluggy não tem acesso a este item."
+            : error.status === 404
+              ? "Este item não pertence à aplicação Pluggy configurada."
+              : "A Pluggy não conseguiu fornecer os dados deste item.";
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      typeof error.code === "string"
+    ) {
+      console.error("Falha do Supabase ao importar item", {
+        code: error.code,
+        message: "message" in error ? error.message : undefined,
+      });
+      return NextResponse.json(
+        {
+          error: "O Supabase recusou o registro ou a sincronização do item.",
+          databaseCode: error.code,
+        },
+        { status: 502 },
+      );
+    }
+    console.error("Falha inesperada ao importar item", {
+      name: error instanceof Error ? error.name : "UNKNOWN",
+      message: error instanceof Error ? error.message : undefined,
+    });
     return NextResponse.json(
       { error: "Não foi possível importar e sincronizar o item." },
       { status: 500 },
