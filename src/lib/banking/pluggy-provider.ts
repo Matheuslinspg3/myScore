@@ -16,7 +16,6 @@ interface ApiKeyCache {
 interface ListResponse<T> {
   results: T[];
   next?: string | null;
-  nextCursor?: string | null;
 }
 
 export class PluggyApiError extends Error {
@@ -158,22 +157,23 @@ export class PluggyBankingProvider implements BankingProvider {
     from?: string,
   ): Promise<BankingTransaction[]> {
     const transactions: BankingTransaction[] = [];
-    let cursor: string | null = null;
+    const query = new URLSearchParams({ accountId });
+    if (from) query.set("from", from);
+    let path: string | null = "/v2/transactions?" + query.toString();
 
-    do {
-      const query = new URLSearchParams({
-        accountId,
-        pageSize: "500",
-      });
-      if (from) query.set("from", from);
-      if (cursor) query.set("cursor", cursor);
-
-      const page = await this.request<ListResponse<BankingTransaction>>(
-        "/v2/transactions?" + query.toString(),
+    while (path) {
+      const page: ListResponse<BankingTransaction> = await this.request(
+        path,
       );
       transactions.push(...(page.results ?? []));
-      cursor = page.nextCursor ?? page.next ?? null;
-    } while (cursor);
+      // Pluggy v2 returns the following page as an opaque query string, such
+      // as ?accountId=...&after=.... It must be reused unchanged.
+      path = page.next?.startsWith("?")
+        ? "/v2/transactions" + page.next
+        : page.next?.startsWith("/v2/transactions?")
+          ? page.next
+          : null;
+    }
 
     return transactions;
   }
