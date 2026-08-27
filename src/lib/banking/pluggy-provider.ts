@@ -83,6 +83,11 @@ export class PluggyBankingProvider implements BankingProvider {
     return (await response.json()) as T;
   }
 
+  async getItems(): Promise<BankingItem[]> {
+    const response = await this.request<ListResponse<BankingItem>>("/items");
+    return response.results ?? [];
+  }
+
   async createConnectToken(
     clientUserId: string,
     options: { avoidDuplicates?: boolean } = {},

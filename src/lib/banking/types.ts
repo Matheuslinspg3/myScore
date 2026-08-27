@@ -58,6 +58,7 @@ export interface ConnectTokenResult {
 }
 
 export interface BankingProvider {
+  getItems(): Promise<BankingItem[]>;
   createConnectToken(
     clientUserId: string,
     options?: { avoidDuplicates?: boolean },

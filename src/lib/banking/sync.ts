@@ -87,7 +87,17 @@ export async function syncPluggyItem(
   const startedAt = new Date().toISOString();
   const item = await pluggy.getItem(itemId);
 
-  if (item.clientUserId && item.clientUserId !== ownerId) {
+  const { data: linkedConnection } = await supabase
+    .from("bank_connections")
+    .select("owner_id")
+    .eq("provider", "pluggy")
+    .eq("external_item_id", itemId)
+    .maybeSingle();
+
+  if (
+    (linkedConnection && linkedConnection.owner_id !== ownerId) ||
+    (!linkedConnection && item.clientUserId && item.clientUserId !== ownerId)
+  ) {
     throw new Error("FORBIDDEN_ITEM");
   }
 
