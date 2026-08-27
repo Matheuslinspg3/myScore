@@ -34,8 +34,16 @@ export function ConnectBankButton({ enabled }: { enabled: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemId: normalizedItemId }),
       });
-      const body = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(body.error ?? "Falha ao sincronizar.");
+      const body = (await response.json()) as {
+        error?: string;
+        databaseCode?: string;
+      };
+      if (!response.ok) {
+        const diagnostic = body.databaseCode
+          ? ` Código técnico: ${body.databaseCode}.`
+          : "";
+        throw new Error((body.error ?? "Falha ao sincronizar.") + diagnostic);
+      }
 
       setState("idle");
       setMessage("Conta vinculada e sincronizada com sucesso.");
